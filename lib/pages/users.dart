@@ -122,19 +122,31 @@ class _UsersPageState extends State<UsersPage> {
                   }).toList();
 
                   return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
+                    scrollDirection: Axis.vertical,
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width,
                       child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text("Nombres")),
-                          DataColumn(label: Text("Apellidos")),
-                          DataColumn(label: Text("Tipo Documento")),
-                          DataColumn(label: Text("Número Documento")),
-                          DataColumn(label: Text("Llegada")),
-                          DataColumn(label: Text("Salida")),
-                          DataColumn(label: Text("Acciones")),
-                          DataColumn(label: Text("Estado")),
+                        columns: [
+                          const DataColumn(label: Text("Nombres")),
+                          const DataColumn(label: Text("Apellidos")),
+                          DataColumn(
+                            label: Text(
+                              MediaQuery.of(context).size.width < 1400
+                                  ? "T. Doc."
+                                  : "Tipo Documento",
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              MediaQuery.of(context).size.width < 1400
+                                  ? "N. Doc."
+                                  : "Número Documento",
+                            ),
+                          ),
+                          const DataColumn(label: Text("Llegada")),
+                          const DataColumn(label: Text("Salida")),
+                          const DataColumn(label: Text("Acciones")),
+                          const DataColumn(label: Text("Estado")),
                         ],
                         rows: filteredDocs.map((doc) {
                           final usuario = doc.data() as Map<String, dynamic>;
@@ -157,10 +169,24 @@ class _UsersPageState extends State<UsersPage> {
                                 ),
                               ),
                               DataCell(
-                                Text(usuario["llegada"]?.toString() ?? '-'),
+                                Text(
+                                  usuario["fechaIngreso"] != null
+                                      ? (usuario["fechaIngreso"] as Timestamp)
+                                            .toDate()
+                                            .toString()
+                                            .split(' ')[0]
+                                      : '-',
+                                ),
                               ),
                               DataCell(
-                                Text(usuario["salida"]?.toString() ?? '-'),
+                                Text(
+                                  usuario["fechaSalida"] != null
+                                      ? (usuario["fechaSalida"] as Timestamp)
+                                            .toDate()
+                                            .toString()
+                                            .split(' ')[0]
+                                      : '-',
+                                ),
                               ),
                               DataCell(
                                 Row(

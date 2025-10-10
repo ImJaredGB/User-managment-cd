@@ -62,23 +62,40 @@ class _CalendarioPageState extends State<CalendarioPage> {
           ),
         ),
       ),
-      ...List.generate(
-        totalDias,
-        (index) => DataColumn(
-          label: Text(
-            '${index + 1}',
-            style: TextStyle(
-              fontSize: 10,
-              color: const Color.fromARGB(255, 81, 81, 81),
+      ...List.generate(totalDias, (index) {
+        final diaNumero = index + 1;
+        final hoy = DateTime.now();
+        final esHoy =
+            hoy.day == diaNumero &&
+            hoy.month == mesIndex &&
+            hoy.year == anioActual;
+        return DataColumn(
+          label: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+            decoration: BoxDecoration(
+              color: esHoy
+                  ? const Color.fromARGB(255, 158, 158, 158).withOpacity(0.3)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '$diaNumero',
+              style: const TextStyle(
+                fontSize: 10,
+                color: Color.fromARGB(255, 81, 81, 81),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     ];
 
     return Expanded(
       child: FutureBuilder<QuerySnapshot>(
-        future: FirebaseFirestore.instance.collection('habitaciones').get(),
+        future: FirebaseFirestore.instance
+            .collection('habitaciones')
+            .where('zona', isEqualTo: zona)
+            .get(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -115,6 +132,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                   habitaciones.map((habitacionDoc) async {
                     final literasSnapshot = await habitacionDoc.reference
                         .collection('literas')
+                        .where('occupied', isEqualTo: true)
                         .get();
                     return literasSnapshot.docs;
                   }),
@@ -200,8 +218,43 @@ class _CalendarioPageState extends State<CalendarioPage> {
                       );
                     });
 
+                    String? nombreUsuarioActual;
+                    if (usuario.isNotEmpty &&
+                        fechaIngreso != null &&
+                        fechaSalida != null) {
+                      final now = DateTime.now();
+                      if (!now.isBefore(fechaIngreso) &&
+                          !now.isAfter(fechaSalida)) {
+                        final nombre = (usuario['nombres'] ?? '').toString();
+                        final apellido = (usuario['apellidos'] ?? '')
+                            .toString();
+                        nombreUsuarioActual = '$nombre $apellido'.trim();
+                      }
+                    }
+
                     return DataRow(
-                      cells: [DataCell(Text(data['id'] ?? '-')), ...diaCeldas],
+                      cells: [
+                        DataCell(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                data['id'] ?? '-',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              if (nombreUsuarioActual != null)
+                                Text(
+                                  nombreUsuarioActual,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        ...diaCeldas,
+                      ],
                     );
                   }).toList();
 

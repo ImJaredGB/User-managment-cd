@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../modals/newroomform.dart';
 import '../modals/bunkbedload.dart';
+import '../modals/usersandbunks.dart';
 
 class RoomsPage extends StatefulWidget {
   const RoomsPage({super.key});
@@ -68,6 +69,29 @@ class _RoomsPageState extends State<RoomsPage> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Recargar'),
+                        onPressed: () {
+                          setState(
+                            () {},
+                          ); // Fuerza reconstrucción solo de esta sección
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
@@ -83,87 +107,127 @@ class _RoomsPageState extends State<RoomsPage> {
                           return Center(child: Text('No hay habitaciones'));
                         }
                         final docs = snapshot.data!.docs;
-                        return SingleChildScrollView(
-                          child: DataTable(
-                            columns: const [
-                              DataColumn(label: Text('Nomenclatura')),
-                              DataColumn(label: Text('Tamaño')),
-                              DataColumn(label: Text('Disponibilidad')),
-                              DataColumn(label: Text('Estado')),
-                              DataColumn(label: Text('Acciones')),
-                            ],
-                            rows: docs.map((doc) {
-                              final data = doc.data() as Map<String, dynamic>;
-                              final disponibles = data['disponibles'] ?? 0;
-                              final ocupadas = data['ocupadas'] ?? 0;
-                              final disponible = (disponibles > 0)
-                                  ? 'Disponible'
-                                  : 'No disponible';
-                              final estado = (data['desactivada'] == true)
-                                  ? 'Desactiva'
-                                  : 'Activa';
 
-                              return DataRow(
-                                cells: [
-                                  DataCell(Text(data['nomenclatura'] ?? '-')),
-                                  DataCell(
-                                    FutureBuilder<QuerySnapshot>(
-                                      future: FirebaseFirestore.instance
-                                          .collection('habitaciones')
-                                          .doc(doc.id)
-                                          .collection('literas')
-                                          .where('active', isEqualTo: true)
-                                          .get(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          );
-                                        }
-                                        if (!snapshot.hasData) {
-                                          return Text('0');
-                                        }
-                                        final activeCount =
-                                            snapshot.data!.docs.length;
-                                        return Text(activeCount.toString());
-                                      },
-                                    ),
-                                  ),
-                                  DataCell(Text(disponible)),
-                                  DataCell(Text(estado)),
-                                  DataCell(
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) =>
-                                                  LiterasModal(doc.id),
-                                            );
-                                          },
-                                          icon: Icon(Icons.visibility),
-                                        ),
-                                        IconButton(
-                                          icon: Icon(Icons.edit),
-                                          onPressed: () {},
-                                        ),
-                                        IconButton(
-                                          icon: Icon(Icons.delete),
-                                          onPressed: () {},
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                        // Prepare a future per habitacion to get its active literas
+                        final literasFutures = docs.map((doc) {
+                          return FirebaseFirestore.instance
+                              .collection('habitaciones')
+                              .doc(doc.id)
+                              .collection('literas')
+                              .where('active', isEqualTo: true)
+                              .get();
+                        }).toList();
+
+                        return FutureBuilder<List<QuerySnapshot>>(
+                          future: Future.wait(literasFutures),
+                          builder: (context, litSnapshots) {
+                            if (litSnapshots.connectionState ==
+                                ConnectionState.waiting) {
+                              return Center(child: CircularProgressIndicator());
+                            }
+                            if (litSnapshots.hasError) {
+                              return Center(
+                                child: Text('Error: ${litSnapshots.error}'),
                               );
-                            }).toList(),
-                          ),
+                            }
+                            final litList = litSnapshots.data ?? [];
+
+                            List<DataRow> rows = [];
+
+                            for (var i = 0; i < docs.length; i++) {
+                              final doc = docs[i];
+                              final data = doc.data() as Map<String, dynamic>;
+
+                              final literasSnap = litList.length > i
+                                  ? litList[i]
+                                  : null;
+                              final literasActivas = literasSnap?.docs ?? [];
+
+                              final totalActivas = literasActivas.length;
+                              final ocupadas = literasActivas
+                                  .where(
+                                    (l) =>
+                                        (l.data()
+                                            as Map<
+                                              String,
+                                              dynamic
+                                            >)['occupied'] ==
+                                        true,
+                                  )
+                                  .length;
+
+                              String disponibilidad;
+                              if (totalActivas == 0) {
+                                disponibilidad = 'Disponible';
+                              } else if (ocupadas == 0) {
+                                disponibilidad = 'Disponible';
+                              } else if (ocupadas == totalActivas) {
+                                disponibilidad = 'Lleno';
+                              } else {
+                                disponibilidad = 'Disponible';
+                              }
+
+                              rows.add(
+                                DataRow(
+                                  cells: [
+                                    DataCell(Text(data['nomenclatura'] ?? '-')),
+                                    DataCell(Text(totalActivas.toString())),
+                                    DataCell(Text(disponibilidad)),
+                                    DataCell(
+                                      Text(
+                                        (data['desactivada'] == true)
+                                            ? 'Desactiva'
+                                            : 'Activa',
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            onPressed: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) =>
+                                                    UsersAndBunksModal(doc.id),
+                                              );
+                                            },
+                                            icon: Icon(Icons.visibility),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.edit),
+                                            onPressed: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) =>
+                                                    LiterasModal(doc.id),
+                                              );
+                                            },
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.delete),
+                                            onPressed: () {},
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return SingleChildScrollView(
+                              child: DataTable(
+                                columns: const [
+                                  DataColumn(label: Text('Nomenclatura')),
+                                  DataColumn(label: Text('Tamaño')),
+                                  DataColumn(label: Text('Disponibilidad')),
+                                  DataColumn(label: Text('Estado')),
+                                  DataColumn(label: Text('Acciones')),
+                                ],
+                                rows: rows,
+                              ),
+                            );
+                          },
                         );
                       },
                     ),

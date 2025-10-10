@@ -80,6 +80,7 @@ class _LiterasModalState extends State<LiterasModal> {
                       (doc) => {
                         'id': doc['id'],
                         'active': doc['active'],
+                        'occupied': doc['occupied'],
                         'ref': doc.reference,
                       },
                     )
@@ -111,6 +112,7 @@ class _LiterasModalState extends State<LiterasModal> {
                     itemBuilder: (context, index) {
                       final litera = filteredLiteras[index];
                       final bool isActive = litera['active'] == true;
+                      final bool isOccupied = litera['occupied'] == true;
                       final String literaId = litera['id'] ?? '';
                       return ListTile(
                         leading: Icon(
@@ -129,24 +131,30 @@ class _LiterasModalState extends State<LiterasModal> {
                           ),
                         ),
                         subtitle: Text(
-                          isActive ? 'Activa' : 'Inactiva',
+                          isOccupied ? 'Ocupada' : 'Desocupada',
                           style: TextStyle(
-                            color: isActive ? Colors.green : Colors.red,
+                            color: isOccupied ? Colors.orange : Colors.blueGrey,
                           ),
                         ),
                         trailing: Switch(
                           value: isActive,
-                          onChanged: (value) async {
-                            try {
-                              await litera['ref'].update({'active': value});
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error al actualizar: $e'),
-                                ),
-                              );
-                            }
-                          },
+                          onChanged: isOccupied
+                              ? null
+                              : (value) async {
+                                  try {
+                                    await litera['ref'].update({
+                                      'active': value,
+                                    });
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Error al actualizar: $e',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
                           activeColor: Theme.of(context).colorScheme.primary,
                         ),
                       );
