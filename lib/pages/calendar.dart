@@ -13,6 +13,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
   String mesActivo = "Enero";
   int _anioActual = DateTime.now().year;
   final searchController = TextEditingController();
+  int _paginaDias = 0;
   @override
   void initState() {
     super.initState();
@@ -51,6 +52,18 @@ class _CalendarioPageState extends State<CalendarioPage> {
   Widget buildTablaMes(String mes, String zona, int anioActual) {
     int mesIndex = meses.indexOf(mes) + 1;
     int totalDias = diasEnMes(mesIndex, anioActual);
+    final width = MediaQuery.of(context).size.width;
+    int diasPorPagina;
+    if (width < 600) {
+      diasPorPagina = 10;
+    } else if (width < 900) {
+      diasPorPagina = 15;
+    } else {
+      diasPorPagina = totalDias;
+    }
+    int totalPaginas = (totalDias / diasPorPagina).ceil();
+    int startDia = _paginaDias * diasPorPagina;
+    int endDia = (startDia + diasPorPagina).clamp(0, totalDias);
 
     List<DataColumn> columnas = [
       const DataColumn(
@@ -62,8 +75,8 @@ class _CalendarioPageState extends State<CalendarioPage> {
           ),
         ),
       ),
-      ...List.generate(totalDias, (index) {
-        final diaNumero = index + 1;
+      ...List.generate(endDia - startDia, (index) {
+        final diaNumero = startDia + index + 1;
         final hoy = DateTime.now();
         final esHoy =
             hoy.day == diaNumero &&
@@ -91,194 +104,243 @@ class _CalendarioPageState extends State<CalendarioPage> {
     ];
 
     return Expanded(
-      child: FutureBuilder<QuerySnapshot>(
-        future: FirebaseFirestore.instance
-            .collection('habitaciones')
-            .where('zona', isEqualTo: zona)
-            .get(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          // Filter habitaciones by zona
-          final habitaciones = (snapshot.data?.docs ?? []).where((
-            habitacionDoc,
-          ) {
-            final data = habitacionDoc.data() as Map<String, dynamic>;
-            return data['zona'] == zona;
-          }).toList();
+      child: Column(
+        children: [
+          Expanded(
+            child: FutureBuilder<QuerySnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('habitaciones')
+                  .where('zona', isEqualTo: zona)
+                  .get(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                // Filter habitaciones by zona
+                final habitaciones = (snapshot.data?.docs ?? []).where((
+                  habitacionDoc,
+                ) {
+                  final data = habitacionDoc.data() as Map<String, dynamic>;
+                  return data['zona'] == zona;
+                }).toList();
 
-          // Outer FutureBuilder for usuarios
-          return FutureBuilder<QuerySnapshot>(
-            future: FirebaseFirestore.instance.collection('usuarios').get(),
-            builder: (context, usuariosSnapshot) {
-              if (usuariosSnapshot.hasError) {
-                return Center(child: Text('Error: ${usuariosSnapshot.error}'));
-              }
-              if (usuariosSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final usuariosDocs = usuariosSnapshot.data?.docs ?? [];
-              // List of usuario maps, for easier lookup
-              final usuariosList = usuariosDocs
-                  .map((doc) => doc.data() as Map<String, dynamic>)
-                  .toList();
-
-              return FutureBuilder<List<QueryDocumentSnapshot>>(
-                future: Future.wait(
-                  habitaciones.map((habitacionDoc) async {
-                    final literasSnapshot = await habitacionDoc.reference
-                        .collection('literas')
-                        .where('occupied', isEqualTo: true)
-                        .get();
-                    return literasSnapshot.docs;
-                  }),
-                ).then((listOfLists) => listOfLists.expand((x) => x).toList()),
-                builder: (context, literasSnapshot) {
-                  if (literasSnapshot.hasError) {
-                    return Center(
-                      child: Text('Error: ${literasSnapshot.error}'),
-                    );
-                  }
-                  if (literasSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final literas = literasSnapshot.data ?? [];
-                  // Filter literas by searchController.text (case-insensitive, contains in data['id'])
-                  final searchText = searchController.text.trim().toLowerCase();
-                  final filteredLiteras = searchText.isEmpty
-                      ? literas
-                      : literas.where((literaDoc) {
-                          final data = literaDoc.data() as Map<String, dynamic>;
-                          final id = (data['id'] ?? '')
-                              .toString()
-                              .toLowerCase();
-                          return id.contains(searchText);
-                        }).toList();
-
-                  List<DataRow> filas = filteredLiteras.map((literaDoc) {
-                    final data = literaDoc.data() as Map<String, dynamic>;
-                    final literaId = data['id'];
-                    // Buscar usuario que tenga esta litera asignada
-                    final usuario = usuariosList.firstWhere(
-                      (u) => u['litera'] == literaId,
-                      orElse: () => <String, dynamic>{},
-                    );
-                    DateTime? fechaIngreso;
-                    DateTime? fechaSalida;
-                    if (usuario.isNotEmpty) {
-                      final ingreso = usuario['fechaIngreso'];
-                      final salida = usuario['fechaSalida'];
-                      if (ingreso is Timestamp) {
-                        fechaIngreso = ingreso.toDate();
-                      }
-                      if (salida is Timestamp) {
-                        fechaSalida = salida.toDate();
-                      }
-                    }
-                    // Nueva lógica: celdas verdes por días ocupados, grises por días libres
-                    List<DataCell> diaCeldas = List.generate(totalDias, (
-                      index,
-                    ) {
-                      final dia = index + 1;
-                      bool ocupado = false;
-
-                      if (fechaIngreso != null && fechaSalida != null) {
-                        final primerDiaMes = DateTime(anioActual, mesIndex, 1);
-                        final ultimoDiaMes = DateTime(
-                          anioActual,
-                          mesIndex,
-                          totalDias,
-                        );
-                        final inicio = fechaIngreso.isAfter(primerDiaMes)
-                            ? fechaIngreso
-                            : primerDiaMes;
-                        final fin = fechaSalida.isBefore(ultimoDiaMes)
-                            ? fechaSalida
-                            : ultimoDiaMes;
-
-                        if (!fin.isBefore(inicio)) {
-                          ocupado = dia >= inicio.day && dia <= fin.day;
-                        }
-                      }
-
-                      return DataCell(
-                        Container(
-                          height: 18,
-                          width: 20,
-                          decoration: BoxDecoration(
-                            color: ocupado ? Colors.green : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
+                // Outer FutureBuilder for usuarios
+                return FutureBuilder<QuerySnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('usuarios')
+                      .get(),
+                  builder: (context, usuariosSnapshot) {
+                    if (usuariosSnapshot.hasError) {
+                      return Center(
+                        child: Text('Error: ${usuariosSnapshot.error}'),
                       );
-                    });
-
-                    String? nombreUsuarioActual;
-                    if (usuario.isNotEmpty &&
-                        fechaIngreso != null &&
-                        fechaSalida != null) {
-                      final now = DateTime.now();
-                      if (!now.isBefore(fechaIngreso) &&
-                          !now.isAfter(fechaSalida)) {
-                        final nombre = (usuario['nombres'] ?? '').toString();
-                        final apellido = (usuario['apellidos'] ?? '')
-                            .toString();
-                        nombreUsuarioActual = '$nombre $apellido'.trim();
-                      }
                     }
+                    if (usuariosSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final usuariosDocs = usuariosSnapshot.data?.docs ?? [];
+                    // List of usuario maps, for easier lookup
+                    final usuariosList = usuariosDocs
+                        .map((doc) => doc.data() as Map<String, dynamic>)
+                        .toList();
 
-                    return DataRow(
-                      cells: [
-                        DataCell(
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                data['id'] ?? '-',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              if (nombreUsuarioActual != null)
-                                Text(
-                                  nombreUsuarioActual,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey,
+                    return FutureBuilder<List<QueryDocumentSnapshot>>(
+                      future:
+                          Future.wait(
+                            habitaciones.map((habitacionDoc) async {
+                              final literasSnapshot = await habitacionDoc
+                                  .reference
+                                  .collection('literas')
+                                  .where('occupied', isEqualTo: true)
+                                  .get();
+                              return literasSnapshot.docs;
+                            }),
+                          ).then(
+                            (listOfLists) =>
+                                listOfLists.expand((x) => x).toList(),
+                          ),
+                      builder: (context, literasSnapshot) {
+                        if (literasSnapshot.hasError) {
+                          return Center(
+                            child: Text('Error: ${literasSnapshot.error}'),
+                          );
+                        }
+                        if (literasSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final literas = literasSnapshot.data ?? [];
+                        // Filter literas by searchController.text (case-insensitive, contains in data['id'])
+                        final searchText = searchController.text
+                            .trim()
+                            .toLowerCase();
+                        final filteredLiteras = searchText.isEmpty
+                            ? literas
+                            : literas.where((literaDoc) {
+                                final data =
+                                    literaDoc.data() as Map<String, dynamic>;
+                                final id = (data['id'] ?? '')
+                                    .toString()
+                                    .toLowerCase();
+                                return id.contains(searchText);
+                              }).toList();
+
+                        List<DataRow> filas = filteredLiteras.map((literaDoc) {
+                          final data = literaDoc.data() as Map<String, dynamic>;
+                          final literaId = data['id'];
+                          // Buscar usuario que tenga esta litera asignada
+                          final usuario = usuariosList.firstWhere(
+                            (u) => u['litera'] == literaId,
+                            orElse: () => <String, dynamic>{},
+                          );
+                          DateTime? fechaIngreso;
+                          DateTime? fechaSalida;
+                          if (usuario.isNotEmpty) {
+                            final ingreso = usuario['fechaIngreso'];
+                            final salida = usuario['fechaSalida'];
+                            if (ingreso is Timestamp) {
+                              fechaIngreso = ingreso.toDate();
+                            }
+                            if (salida is Timestamp) {
+                              fechaSalida = salida.toDate();
+                            }
+                          }
+                          // Nueva lógica: celdas verdes por días ocupados, grises por días libres
+                          List<DataCell> diaCeldas = List.generate(
+                            endDia - startDia,
+                            (index) {
+                              final dia = startDia + index + 1;
+                              bool ocupado = false;
+
+                              if (fechaIngreso != null && fechaSalida != null) {
+                                final primerDiaMes = DateTime(
+                                  anioActual,
+                                  mesIndex,
+                                  1,
+                                );
+                                final ultimoDiaMes = DateTime(
+                                  anioActual,
+                                  mesIndex,
+                                  totalDias,
+                                );
+                                final inicio =
+                                    fechaIngreso.isAfter(primerDiaMes)
+                                    ? fechaIngreso
+                                    : primerDiaMes;
+                                final fin = fechaSalida.isBefore(ultimoDiaMes)
+                                    ? fechaSalida
+                                    : ultimoDiaMes;
+
+                                if (!fin.isBefore(inicio)) {
+                                  ocupado = dia >= inicio.day && dia <= fin.day;
+                                }
+                              }
+
+                              return DataCell(
+                                Container(
+                                  height: 18,
+                                  width: 20,
+                                  decoration: BoxDecoration(
+                                    color: ocupado
+                                        ? Colors.green
+                                        : Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(3),
                                   ),
                                 ),
-                            ],
-                          ),
-                        ),
-                        ...diaCeldas,
-                      ],
-                    );
-                  }).toList();
+                              );
+                            },
+                          );
 
-                  // Wrap DataTable in vertical and horizontal scroll views, and ensure full width
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: DataTable(
-                          columnSpacing: 10,
-                          horizontalMargin: 4,
-                          columns: columnas,
-                          rows: filas,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        },
+                          String? nombreUsuarioActual;
+                          if (usuario.isNotEmpty &&
+                              fechaIngreso != null &&
+                              fechaSalida != null) {
+                            final now = DateTime.now();
+                            if (!now.isBefore(fechaIngreso) &&
+                                !now.isAfter(fechaSalida)) {
+                              final nombre = (usuario['nombres'] ?? '')
+                                  .toString();
+                              final apellido = (usuario['apellidos'] ?? '')
+                                  .toString();
+                              nombreUsuarioActual = '$nombre $apellido'.trim();
+                            }
+                          }
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      data['id'] ?? '-',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    if (nombreUsuarioActual != null)
+                                      Text(
+                                        nombreUsuarioActual,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              ...diaCeldas,
+                            ],
+                          );
+                        }).toList();
+
+                        // Wrap DataTable in vertical and horizontal scroll views, and ensure full width
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width,
+                              child: DataTable(
+                                columnSpacing: 10,
+                                horizontalMargin: 4,
+                                columns: columnas,
+                                rows: filas,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          // Controles de paginación de días
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_left),
+                onPressed: _paginaDias > 0
+                    ? () => setState(() => _paginaDias--)
+                    : null,
+              ),
+              Text('Días ${startDia + 1}-${endDia}'),
+              IconButton(
+                icon: const Icon(Icons.arrow_right),
+                onPressed: _paginaDias < totalPaginas - 1
+                    ? () => setState(() => _paginaDias++)
+                    : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -312,22 +374,57 @@ class _CalendarioPageState extends State<CalendarioPage> {
                           onPressed: () {},
                           icon: const Icon(Icons.filter_list),
                           label: const Text("Filtros"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color.fromARGB(
+                              67,
+                              221,
+                              231,
+                              236,
+                            ),
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(
+                                color: Colors.transparent,
+                                width: 1,
+                              ),
+                            ),
+                            elevation: 0,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: TextField(
-                          controller: searchController,
-                          decoration: const InputDecoration(
-                            hintText: "Buscar...",
-                            prefixIcon: Icon(Icons.search),
-                            border: OutlineInputBorder(),
+                        child: SizedBox(
+                          height: 40,
+                          child: TextField(
+                            controller: searchController,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: InputDecoration(
+                              hintText: "Buscar...",
+                              prefixIcon: const Icon(Icons.search),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                                borderSide: const BorderSide(),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                                borderSide: const BorderSide(),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 12,
+                              ),
+                            ),
+                            onSubmitted: (value) {
+                              setState(() {
+                                searchController.text = value;
+                              });
+                            },
                           ),
-                          onSubmitted: (value) {
-                            setState(() {
-                              searchController.text = value;
-                            });
-                          },
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -339,13 +436,36 @@ class _CalendarioPageState extends State<CalendarioPage> {
                               horizontal: 4.0,
                             ),
                             child: ChoiceChip(
-                              label: Text(zona),
+                              label: Text(
+                                zona,
+                                style: TextStyle(
+                                  color: esActivo ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               selected: esActivo,
                               onSelected: (_) {
                                 setState(() {
                                   zonaActual = zona;
                                 });
                               },
+                              selectedColor: Colors.blueGrey,
+                              backgroundColor: const Color.fromARGB(
+                                67,
+                                221,
+                                231,
+                                236,
+                              ),
+                              checkmarkColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: esActivo
+                                      ? Colors.blueGrey
+                                      : Colors.transparent,
+                                  width: 1,
+                                ),
+                              ),
                             ),
                           );
                         }).toList(),
@@ -378,13 +498,38 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                   horizontal: 4.0,
                                 ),
                                 child: ChoiceChip(
-                                  label: Text(zona),
+                                  label: Text(
+                                    zona,
+                                    style: TextStyle(
+                                      color: esActivo
+                                          ? Colors.white
+                                          : Colors.black,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                   selected: esActivo,
                                   onSelected: (_) {
                                     setState(() {
                                       zonaActual = zona;
                                     });
                                   },
+                                  selectedColor: Colors.blueGrey,
+                                  backgroundColor: const Color.fromARGB(
+                                    67,
+                                    221,
+                                    231,
+                                    236,
+                                  ),
+                                  checkmarkColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    side: BorderSide(
+                                      color: esActivo
+                                          ? Colors.blueGrey
+                                          : Colors.transparent,
+                                      width: 1,
+                                    ),
+                                  ),
                                 ),
                               );
                             }).toList(),
@@ -486,6 +631,15 @@ class _CalendarioPageState extends State<CalendarioPage> {
               onPressed: () {},
               icon: const Icon(Icons.filter_list),
               label: const Text("Filtros"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(67, 221, 231, 236),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: Colors.transparent, width: 1),
+                ),
+                elevation: 0,
+              ),
             ),
           ),
         ),
@@ -574,9 +728,29 @@ class _MesesNavigationState extends State<_MesesNavigation> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: ChoiceChip(
-                  label: Text(mes),
+                  label: Text(
+                    mes,
+                    style: TextStyle(
+                      color: esActivo
+                          ? const Color.fromARGB(255, 255, 255, 255)
+                          : const Color.fromARGB(221, 0, 0, 0),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  checkmarkColor: Colors.white,
                   selected: esActivo,
                   onSelected: (_) => widget.onMesSelected(mes),
+                  selectedColor: Colors.blueGrey,
+                  backgroundColor: const Color.fromARGB(67, 221, 231, 236),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: esActivo
+                          ? Colors.blueGrey
+                          : const Color.fromARGB(0, 254, 254, 254),
+                      width: 1,
+                    ),
+                  ),
                 ),
               ),
             );
@@ -615,9 +789,29 @@ class _MesesNavigationState extends State<_MesesNavigation> {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10.0),
                     child: ChoiceChip(
-                      label: Text(mes),
+                      label: Text(
+                        mes,
+                        style: TextStyle(
+                          color: esActivo
+                              ? const Color.fromARGB(255, 255, 255, 255)
+                              : const Color.fromARGB(221, 0, 0, 0),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      checkmarkColor: Colors.white,
                       selected: esActivo,
                       onSelected: (_) => widget.onMesSelected(mes),
+                      selectedColor: Colors.blueGrey,
+                      backgroundColor: const Color.fromARGB(67, 221, 231, 236),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(
+                          color: esActivo
+                              ? Colors.blueGrey
+                              : const Color.fromARGB(0, 254, 254, 254),
+                          width: 1,
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -668,9 +862,29 @@ class _MesesNavigationState extends State<_MesesNavigation> {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10.0),
                     child: ChoiceChip(
-                      label: Text(mes),
+                      label: Text(
+                        mes,
+                        style: TextStyle(
+                          color: esActivo
+                              ? const Color.fromARGB(255, 255, 255, 255)
+                              : const Color.fromARGB(221, 0, 0, 0),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      checkmarkColor: Colors.white,
                       selected: esActivo,
                       onSelected: (_) => widget.onMesSelected(mes),
+                      selectedColor: Colors.blueGrey,
+                      backgroundColor: const Color.fromARGB(67, 221, 231, 236),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(
+                          color: esActivo
+                              ? Colors.blueGrey
+                              : const Color.fromARGB(0, 254, 254, 254),
+                          width: 1,
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),

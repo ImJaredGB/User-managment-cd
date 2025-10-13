@@ -38,12 +38,25 @@ class _RoomsPageState extends State<RoomsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedZone == zone
+                              ? Colors.blueGrey
+                              : const Color.fromARGB(255, 241, 241, 241),
                           foregroundColor: selectedZone == zone
                               ? Colors.white
-                              : Colors.black,
-                          backgroundColor: selectedZone == zone
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.grey[200],
+                              : const Color.fromARGB(221, 0, 0, 0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: selectedZone == zone
+                                  ? Colors.blueGrey
+                                  : const Color.fromARGB(0, 254, 254, 254),
+                              width: 1,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 8,
+                          ),
                         ),
                         onPressed: () {
                           setState(() {
@@ -81,11 +94,21 @@ class _RoomsPageState extends State<RoomsPage> {
                           ); // Fuerza reconstrucción solo de esta sección
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueGrey,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            96,
+                            125,
+                            139,
+                          ),
+                          foregroundColor: const Color.fromARGB(
+                            255,
+                            255,
+                            255,
+                            255,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide.none,
                           ),
                         ),
                       ),
@@ -107,9 +130,18 @@ class _RoomsPageState extends State<RoomsPage> {
                           return Center(child: Text('No hay habitaciones'));
                         }
                         final docs = snapshot.data!.docs;
+                        final filteredDocs = docs.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final nomenclatura = (data['nomenclatura'] ?? '')
+                              .toString()
+                              .toLowerCase();
+                          return nomenclatura.contains(
+                            searchQuery.toLowerCase(),
+                          );
+                        }).toList();
 
                         // Prepare a future per habitacion to get its active literas
-                        final literasFutures = docs.map((doc) {
+                        final literasFutures = filteredDocs.map((doc) {
                           return FirebaseFirestore.instance
                               .collection('habitaciones')
                               .doc(doc.id)
@@ -134,8 +166,8 @@ class _RoomsPageState extends State<RoomsPage> {
 
                             List<DataRow> rows = [];
 
-                            for (var i = 0; i < docs.length; i++) {
-                              final doc = docs[i];
+                            for (var i = 0; i < filteredDocs.length; i++) {
+                              final doc = filteredDocs[i];
                               final data = doc.data() as Map<String, dynamic>;
 
                               final literasSnap = litList.length > i
@@ -245,9 +277,32 @@ class _RoomsPageState extends State<RoomsPage> {
                   TextField(
                     decoration: InputDecoration(
                       labelText: 'Buscar',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Colors.black54, // icono gris oscuro
+                      ),
+                      filled: true,
+                      fillColor: Colors.white, // fondo blanco
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25),
+                        borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25),
+                        borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
                     ),
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
                     onChanged: (value) {
                       setState(() {
                         searchQuery = value;
@@ -264,6 +319,14 @@ class _RoomsPageState extends State<RoomsPage> {
                         builder: (context) => HabitacionForm(),
                       );
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 241, 241, 241),
+                      foregroundColor: const Color.fromARGB(221, 0, 0, 0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide.none,
+                      ),
+                    ),
                   ),
                   SizedBox(height: 8),
                   ElevatedButton.icon(
@@ -272,6 +335,14 @@ class _RoomsPageState extends State<RoomsPage> {
                     onPressed: () {
                       // Placeholder for organize action
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 241, 241, 241),
+                      foregroundColor: const Color.fromARGB(221, 0, 0, 0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide.none,
+                      ),
+                    ),
                   ),
                 ],
               ),

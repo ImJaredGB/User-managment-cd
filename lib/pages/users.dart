@@ -33,8 +33,12 @@ class _UsersPageState extends State<UsersPage> {
                 Text(
                   "Documento: ${usuarioSeleccionado?['tipoDocumento'] ?? '-'} ${usuarioSeleccionado?['numeroDocumento'] ?? '-'}",
                 ),
-                Text("Llegada: ${usuarioSeleccionado?['llegada'] ?? '-'}"),
-                Text("Salida: ${usuario['salida'] ?? '-'}"),
+                Text(
+                  "Llegada: ${usuarioSeleccionado?['fechaIngreso'] != null ? ((usuarioSeleccionado?['fechaIngreso'] as Timestamp).toDate().day.toString().padLeft(2, '0') + '/' + (usuarioSeleccionado?['fechaIngreso'] as Timestamp).toDate().month.toString().padLeft(2, '0') + '/' + (usuarioSeleccionado?['fechaIngreso'] as Timestamp).toDate().year.toString()) : '-'}",
+                ),
+                Text(
+                  "Salida: ${usuarioSeleccionado?['fechaSalida'] != null ? ((usuarioSeleccionado?['fechaSalida'] as Timestamp).toDate().day.toString().padLeft(2, '0') + '/' + (usuarioSeleccionado?['fechaSalida'] as Timestamp).toDate().month.toString().padLeft(2, '0') + '/' + (usuarioSeleccionado?['fechaSalida'] as Timestamp).toDate().year.toString()) : '-'}",
+                ),
                 Text("Estado: ${usuario['estado'] ?? '-'}"),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -79,11 +83,28 @@ class _UsersPageState extends State<UsersPage> {
             const SizedBox(height: 16),
             // Search bar
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Buscar por nombre o documento',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.black54, // Ícono gris oscuro
+                ),
+                filled: true,
+                fillColor: Colors.white, // Fondo blanco
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: const BorderSide(color: Colors.black, width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
               ),
+              style: const TextStyle(fontSize: 13, color: Colors.black87),
               onChanged: (value) {
                 setState(() {
                   _searchQuery = value;
@@ -192,12 +213,60 @@ class _UsersPageState extends State<UsersPage> {
                                 Row(
                                   children: [
                                     ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          243,
+                                          246,
+                                          248,
+                                        ),
+                                        foregroundColor: const Color.fromARGB(
+                                          221,
+                                          0,
+                                          0,
+                                          0,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          side: BorderSide.none,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 12,
+                                        ),
+                                      ),
                                       onPressed: () =>
                                           _mostrarInfoUsuario(usuario),
                                       child: const Text("Ver más"),
                                     ),
                                     const SizedBox(width: 8),
                                     ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          243,
+                                          246,
+                                          248,
+                                        ),
+                                        foregroundColor: const Color.fromARGB(
+                                          221,
+                                          0,
+                                          0,
+                                          0,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          side: BorderSide.none,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 12,
+                                        ),
+                                      ),
                                       onPressed: () => _editarUsuario(doc),
                                       child: const Text("Editar"),
                                     ),
