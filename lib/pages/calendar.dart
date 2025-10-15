@@ -712,7 +712,6 @@ class _MesesNavigation extends StatefulWidget {
 
 class _MesesNavigationState extends State<_MesesNavigation> {
   int _paginaMeses = 0;
-  int _anioActual = DateTime.now().year;
 
   @override
   Widget build(BuildContext context) {

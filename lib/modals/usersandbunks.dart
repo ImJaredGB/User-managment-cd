@@ -45,7 +45,6 @@ class UsersAndBunksModal extends StatelessWidget {
                       final litera =
                           literasDocs[index].data() as Map<String, dynamic>;
                       final literaId = litera['id'];
-                      final isActive = litera['active'] == true;
                       final isOccupied = litera['occupied'] == true;
 
                       return FutureBuilder<QuerySnapshot>(

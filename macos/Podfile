@@ -1,4 +1,5 @@
 platform :osx, '10.15'
+ENV['ARCHS'] = 'arm64'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -38,5 +39,13 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+
+    # 🔧 Forzar versión mínima de macOS y arquitectura arm64 en todos los pods
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+      config.build_settings['EXCLUDED_ARCHS[sdk=macosx*]'] = 'x86_64'
+      config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
+      config.build_settings['ARCHS'] = 'arm64'
+    end
   end
 end

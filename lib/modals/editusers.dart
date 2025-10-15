@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -348,6 +350,11 @@ class _EditUserDialogState extends State<EditUserDialog> {
         ),
         ElevatedButton(
           onPressed: () async {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => const Center(child: CircularProgressIndicator()),
+            );
             if (_formKey.currentState?.validate() ?? false) {
               // Save logic
               final updatedData = <String, dynamic>{
@@ -384,7 +391,12 @@ class _EditUserDialogState extends State<EditUserDialog> {
                 }
               }
 
+              Navigator.of(context).pop(); // Close loading dialog
               Navigator.of(context).pop();
+            } else {
+              Navigator.of(
+                context,
+              ).pop(); // Close loading dialog if validation fails
             }
           },
           child: Text('Guardar'),
@@ -395,6 +407,7 @@ class _EditUserDialogState extends State<EditUserDialog> {
 }
 
 // _ReadOnlyField class remains for possible reuse elsewhere
+// ignore: unused_element
 class _ReadOnlyField extends StatelessWidget {
   final String label;
   final String value;

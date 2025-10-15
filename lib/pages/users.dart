@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../modals/editusers.dart';
 
 class UsersPage extends StatefulWidget {
@@ -40,16 +39,6 @@ class _UsersPageState extends State<UsersPage> {
                   "Salida: ${usuarioSeleccionado?['fechaSalida'] != null ? ((usuarioSeleccionado?['fechaSalida'] as Timestamp).toDate().day.toString().padLeft(2, '0') + '/' + (usuarioSeleccionado?['fechaSalida'] as Timestamp).toDate().month.toString().padLeft(2, '0') + '/' + (usuarioSeleccionado?['fechaSalida'] as Timestamp).toDate().year.toString()) : '-'}",
                 ),
                 Text("Estado: ${usuario['estado'] ?? '-'}"),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: QrImageView(
-                    data: usuario['numeroDocumento']?.toString() ?? '',
-                    version: QrVersions.auto,
-                    size: 150,
-                  ),
-                ),
               ],
             ),
           ),

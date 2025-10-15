@@ -216,28 +216,85 @@ class _RoomsPageState extends State<RoomsPage> {
                                       Row(
                                         children: [
                                           IconButton(
-                                            onPressed: () {
-                                              showDialog(
-                                                context: context,
-                                                builder: (context) =>
-                                                    UsersAndBunksModal(doc.id),
-                                              );
-                                            },
+                                            onPressed:
+                                                (data['desactivada'] == true)
+                                                ? null
+                                                : () {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          UsersAndBunksModal(
+                                                            doc.id,
+                                                          ),
+                                                    );
+                                                  },
                                             icon: Icon(Icons.visibility),
                                           ),
                                           IconButton(
                                             icon: Icon(Icons.edit),
-                                            onPressed: () {
-                                              showDialog(
-                                                context: context,
-                                                builder: (context) =>
-                                                    LiterasModal(doc.id),
-                                              );
-                                            },
+                                            onPressed:
+                                                (data['desactivada'] == true)
+                                                ? null
+                                                : () {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          LiterasModal(doc.id),
+                                                    );
+                                                  },
                                           ),
                                           IconButton(
-                                            icon: Icon(Icons.delete),
-                                            onPressed: () {},
+                                            icon: Icon(
+                                              Icons.delete,
+                                              color:
+                                                  (data['desactivada'] == true)
+                                                  ? Colors.red
+                                                  : Colors.grey[800],
+                                            ),
+                                            onPressed: () async {
+                                              final literasSnap =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection(
+                                                        'habitaciones',
+                                                      )
+                                                      .doc(doc.id)
+                                                      .collection('literas')
+                                                      .get();
+
+                                              final tieneDatos = literasSnap
+                                                  .docs
+                                                  .any((litera) {
+                                                    final lData = litera.data();
+                                                    return (lData['occupied'] ==
+                                                        true);
+                                                  });
+
+                                              if (tieneDatos) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'No se puede desactivar esta habitación porque tiene literas ocupadas.',
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
+
+                                              final nuevoEstado =
+                                                  !(data['desactivada'] ==
+                                                      true);
+                                              await FirebaseFirestore.instance
+                                                  .collection('habitaciones')
+                                                  .doc(doc.id)
+                                                  .update({
+                                                    'desactivada': nuevoEstado,
+                                                  });
+
+                                              setState(() {});
+                                            },
                                           ),
                                         ],
                                       ),
