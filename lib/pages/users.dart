@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../modals/editusers.dart';
+import '../modals/newuser.dart';
 
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
@@ -71,6 +72,31 @@ class _UsersPageState extends State<UsersPage> {
           children: [
             const SizedBox(height: 16),
             // Search bar
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => const NewUserModal(),
+                  );
+                },
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text("Añadir usuario"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFA11C25),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 16,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             TextField(
               decoration: InputDecoration(
                 labelText: 'Buscar por nombre o documento',
@@ -131,24 +157,36 @@ class _UsersPageState extends State<UsersPage> {
                         documento.contains(queryLower);
                   }).toList();
 
+                  final screenWidth = MediaQuery.of(context).size.width;
+
+                  if (screenWidth < 1100) {
+                    return const Center(
+                      child: Text(
+                        'Agranda un poco la pantalla para mostrar la información',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  }
+
                   return SingleChildScrollView(
                     scrollDirection: Axis.vertical,
                     child: SizedBox(
-                      width: MediaQuery.of(context).size.width,
+                      width: screenWidth,
                       child: DataTable(
                         columns: [
                           const DataColumn(label: Text("Nombres")),
                           const DataColumn(label: Text("Apellidos")),
                           DataColumn(
                             label: Text(
-                              MediaQuery.of(context).size.width < 1400
-                                  ? "T. Doc."
-                                  : "Tipo Documento",
+                              screenWidth < 1400 ? "T. Doc." : "Tipo Documento",
                             ),
                           ),
                           DataColumn(
                             label: Text(
-                              MediaQuery.of(context).size.width < 1400
+                              screenWidth < 1400
                                   ? "N. Doc."
                                   : "Número Documento",
                             ),
@@ -203,18 +241,10 @@ class _UsersPageState extends State<UsersPage> {
                                   children: [
                                     ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color.fromARGB(
-                                          255,
-                                          243,
-                                          246,
-                                          248,
+                                        backgroundColor: const Color(
+                                          0xFFA11C25,
                                         ),
-                                        foregroundColor: const Color.fromARGB(
-                                          221,
-                                          0,
-                                          0,
-                                          0,
-                                        ),
+                                        foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             10,
@@ -233,18 +263,10 @@ class _UsersPageState extends State<UsersPage> {
                                     const SizedBox(width: 8),
                                     ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color.fromARGB(
-                                          255,
-                                          243,
-                                          246,
-                                          248,
+                                        backgroundColor: const Color(
+                                          0xFFA11C25,
                                         ),
-                                        foregroundColor: const Color.fromARGB(
-                                          221,
-                                          0,
-                                          0,
-                                          0,
-                                        ),
+                                        foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             10,

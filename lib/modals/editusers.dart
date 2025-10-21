@@ -163,8 +163,14 @@ class _EditUserDialogState extends State<EditUserDialog> {
       for (final habDoc in habitacionesQuery.docs) {
         final literasSnap = await habDoc.reference.collection('literas').get();
         for (final literaDoc in literasSnap.docs) {
-          final literaId = literaDoc.data()['id']?.toString() ?? literaDoc.id;
-          literas.add(literaId);
+          final literaData = literaDoc.data();
+          final bool occupied = literaData['occupied'] == true;
+          final literaId = literaData['id']?.toString() ?? literaDoc.id;
+
+          // Mostrar literas no ocupadas o la litera actual del usuario
+          if (!occupied || literaId == _literaSeleccionada) {
+            literas.add(literaId);
+          }
         }
       }
 
@@ -251,43 +257,64 @@ class _EditUserDialogState extends State<EditUserDialog> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Fecha Ingreso picker
-              TextFormField(
-                controller: _fechaIngresoController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Fecha Ingreso',
-                  suffixIcon: Icon(Icons.calendar_today),
-                ),
-                onTap: _selectFechaIngreso,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Seleccione fecha de ingreso';
-                  }
-                  return null;
-                },
+              // Fecha Ingreso picker con InputDatePickerFormField y botón
+              Row(
+                children: [
+                  Expanded(
+                    child: InputDatePickerFormField(
+                      initialDate: _fechaIngreso ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: _fechaSalida ?? DateTime(2100),
+                      fieldLabelText: 'Fecha Ingreso',
+                      onDateSubmitted: (picked) {
+                        setState(() {
+                          _fechaIngreso = picked;
+                          _fechaIngresoController.text = _formatDate(picked);
+                        });
+                      },
+                      onDateSaved: (picked) {
+                        setState(() {
+                          _fechaIngreso = picked;
+                          _fechaIngresoController.text = _formatDate(picked);
+                        });
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: _selectFechaIngreso,
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
-              // Fecha Salida picker
-              TextFormField(
-                controller: _fechaSalidaController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Fecha Salida',
-                  suffixIcon: Icon(Icons.calendar_today),
-                ),
-                onTap: _selectFechaSalida,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Seleccione fecha de salida';
-                  }
-                  if (_fechaIngreso != null &&
-                      _fechaSalida != null &&
-                      _fechaSalida!.isBefore(_fechaIngreso!)) {
-                    return 'Salida no puede ser antes de ingreso';
-                  }
-                  return null;
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: InputDatePickerFormField(
+                      initialDate:
+                          _fechaSalida ?? (_fechaIngreso ?? DateTime.now()),
+                      firstDate: _fechaIngreso ?? DateTime(2000),
+                      lastDate: DateTime(2100),
+                      fieldLabelText: 'Fecha Salida',
+                      onDateSubmitted: (picked) {
+                        setState(() {
+                          _fechaSalida = picked;
+                          _fechaSalidaController.text = _formatDate(picked);
+                        });
+                      },
+                      onDateSaved: (picked) {
+                        setState(() {
+                          _fechaSalida = picked;
+                          _fechaSalidaController.text = _formatDate(picked);
+                        });
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: _selectFechaSalida,
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               // Zona dropdown

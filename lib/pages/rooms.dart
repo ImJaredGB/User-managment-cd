@@ -18,6 +18,7 @@ class _RoomsPageState extends State<RoomsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(title: Text('Habitaciones')),
       body: Padding(
@@ -39,7 +40,7 @@ class _RoomsPageState extends State<RoomsPage> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: selectedZone == zone
-                              ? Colors.blueGrey
+                              ? const Color(0xFFA11C25)
                               : const Color.fromARGB(255, 241, 241, 241),
                           foregroundColor: selectedZone == zone
                               ? Colors.white
@@ -48,7 +49,7 @@ class _RoomsPageState extends State<RoomsPage> {
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
                               color: selectedZone == zone
-                                  ? Colors.blueGrey
+                                  ? const Color(0xFFA11C25)
                                   : const Color.fromARGB(0, 254, 254, 254),
                               width: 1,
                             ),
@@ -94,12 +95,7 @@ class _RoomsPageState extends State<RoomsPage> {
                           ); // Fuerza reconstrucción solo de esta sección
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(
-                            255,
-                            96,
-                            125,
-                            139,
-                          ),
+                          backgroundColor: const Color(0xFFA11C25),
                           foregroundColor: const Color.fromARGB(
                             255,
                             255,
@@ -115,212 +111,234 @@ class _RoomsPageState extends State<RoomsPage> {
                     ],
                   ),
                   SizedBox(height: 8),
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('habitaciones')
-                          .where('zona', isEqualTo: selectedZone)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
-                        }
-                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return Center(child: Text('No hay habitaciones'));
-                        }
-                        final docs = snapshot.data!.docs;
-                        final filteredDocs = docs.where((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          final nomenclatura = (data['nomenclatura'] ?? '')
-                              .toString()
-                              .toLowerCase();
-                          return nomenclatura.contains(
-                            searchQuery.toLowerCase(),
-                          );
-                        }).toList();
+                  // Verificación de ancho de pantalla antes de mostrar la tabla
+                  if (screenWidth < 1100)
+                    const Center(
+                      child: Text(
+                        'Agranda un poco la pantalla para mostrar la información',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('habitaciones')
+                            .where('zona', isEqualTo: selectedZone)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(child: CircularProgressIndicator());
+                          }
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
+                            return Center(child: Text('No hay habitaciones'));
+                          }
+                          final docs = snapshot.data!.docs;
+                          final filteredDocs = docs.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final nomenclatura = (data['nomenclatura'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            return nomenclatura.contains(
+                              searchQuery.toLowerCase(),
+                            );
+                          }).toList();
 
-                        // Prepare a future per habitacion to get its active literas
-                        final literasFutures = filteredDocs.map((doc) {
-                          return FirebaseFirestore.instance
-                              .collection('habitaciones')
-                              .doc(doc.id)
-                              .collection('literas')
-                              .where('active', isEqualTo: true)
-                              .get();
-                        }).toList();
+                          // Prepare a future per habitacion to get its active literas
+                          final literasFutures = filteredDocs.map((doc) {
+                            return FirebaseFirestore.instance
+                                .collection('habitaciones')
+                                .doc(doc.id)
+                                .collection('literas')
+                                .where('active', isEqualTo: true)
+                                .get();
+                          }).toList();
 
-                        return FutureBuilder<List<QuerySnapshot>>(
-                          future: Future.wait(literasFutures),
-                          builder: (context, litSnapshots) {
-                            if (litSnapshots.connectionState ==
-                                ConnectionState.waiting) {
-                              return Center(child: CircularProgressIndicator());
-                            }
-                            if (litSnapshots.hasError) {
-                              return Center(
-                                child: Text('Error: ${litSnapshots.error}'),
-                              );
-                            }
-                            final litList = litSnapshots.data ?? [];
+                          return FutureBuilder<List<QuerySnapshot>>(
+                            future: Future.wait(literasFutures),
+                            builder: (context, litSnapshots) {
+                              if (litSnapshots.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
+                              if (litSnapshots.hasError) {
+                                return Center(
+                                  child: Text('Error: ${litSnapshots.error}'),
+                                );
+                              }
+                              final litList = litSnapshots.data ?? [];
 
-                            List<DataRow> rows = [];
+                              List<DataRow> rows = [];
 
-                            for (var i = 0; i < filteredDocs.length; i++) {
-                              final doc = filteredDocs[i];
-                              final data = doc.data() as Map<String, dynamic>;
+                              for (var i = 0; i < filteredDocs.length; i++) {
+                                final doc = filteredDocs[i];
+                                final data = doc.data() as Map<String, dynamic>;
 
-                              final literasSnap = litList.length > i
-                                  ? litList[i]
-                                  : null;
-                              final literasActivas = literasSnap?.docs ?? [];
+                                final literasSnap = litList.length > i
+                                    ? litList[i]
+                                    : null;
+                                final literasActivas = literasSnap?.docs ?? [];
 
-                              final totalActivas = literasActivas.length;
-                              final ocupadas = literasActivas
-                                  .where(
-                                    (l) =>
-                                        (l.data()
-                                            as Map<
-                                              String,
-                                              dynamic
-                                            >)['occupied'] ==
-                                        true,
-                                  )
-                                  .length;
+                                final totalActivas = literasActivas.length;
+                                final ocupadas = literasActivas
+                                    .where(
+                                      (l) =>
+                                          (l.data()
+                                              as Map<
+                                                String,
+                                                dynamic
+                                              >)['occupied'] ==
+                                          true,
+                                    )
+                                    .length;
 
-                              String disponibilidad;
-                              if (totalActivas == 0) {
-                                disponibilidad = 'Disponible';
-                              } else if (ocupadas == 0) {
-                                disponibilidad = 'Disponible';
-                              } else if (ocupadas == totalActivas) {
-                                disponibilidad = 'Lleno';
-                              } else {
-                                disponibilidad = 'Disponible';
+                                String disponibilidad;
+                                if (totalActivas == 0) {
+                                  disponibilidad = 'Disponible';
+                                } else if (ocupadas == 0) {
+                                  disponibilidad = 'Disponible';
+                                } else if (ocupadas == totalActivas) {
+                                  disponibilidad = 'Lleno';
+                                } else {
+                                  disponibilidad = 'Disponible';
+                                }
+
+                                rows.add(
+                                  DataRow(
+                                    cells: [
+                                      DataCell(
+                                        Text(data['nomenclatura'] ?? '-'),
+                                      ),
+                                      DataCell(Text(totalActivas.toString())),
+                                      DataCell(Text(disponibilidad)),
+                                      DataCell(
+                                        Text(
+                                          (data['desactivada'] == true)
+                                              ? 'Desactiva'
+                                              : 'Activa',
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              onPressed:
+                                                  (data['desactivada'] == true)
+                                                  ? null
+                                                  : () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (context) =>
+                                                            UsersAndBunksModal(
+                                                              doc.id,
+                                                            ),
+                                                      );
+                                                    },
+                                              icon: Icon(Icons.visibility),
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.edit),
+                                              onPressed:
+                                                  (data['desactivada'] == true)
+                                                  ? null
+                                                  : () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (context) =>
+                                                            LiterasModal(
+                                                              doc.id,
+                                                            ),
+                                                      );
+                                                    },
+                                            ),
+                                            IconButton(
+                                              icon: Icon(
+                                                Icons.delete,
+                                                color:
+                                                    (data['desactivada'] ==
+                                                        true)
+                                                    ? Colors.red
+                                                    : Colors.grey[800],
+                                              ),
+                                              onPressed: () async {
+                                                final literasSnap =
+                                                    await FirebaseFirestore
+                                                        .instance
+                                                        .collection(
+                                                          'habitaciones',
+                                                        )
+                                                        .doc(doc.id)
+                                                        .collection('literas')
+                                                        .get();
+
+                                                final tieneDatos = literasSnap
+                                                    .docs
+                                                    .any((litera) {
+                                                      final lData = litera
+                                                          .data();
+                                                      return (lData['occupied'] ==
+                                                          true);
+                                                    });
+
+                                                if (tieneDatos) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'No se puede desactivar esta habitación porque tiene literas ocupadas.',
+                                                      ),
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+
+                                                final nuevoEstado =
+                                                    !(data['desactivada'] ==
+                                                        true);
+                                                await FirebaseFirestore.instance
+                                                    .collection('habitaciones')
+                                                    .doc(doc.id)
+                                                    .update({
+                                                      'desactivada':
+                                                          nuevoEstado,
+                                                    });
+
+                                                setState(() {});
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
                               }
 
-                              rows.add(
-                                DataRow(
-                                  cells: [
-                                    DataCell(Text(data['nomenclatura'] ?? '-')),
-                                    DataCell(Text(totalActivas.toString())),
-                                    DataCell(Text(disponibilidad)),
-                                    DataCell(
-                                      Text(
-                                        (data['desactivada'] == true)
-                                            ? 'Desactiva'
-                                            : 'Activa',
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            onPressed:
-                                                (data['desactivada'] == true)
-                                                ? null
-                                                : () {
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (context) =>
-                                                          UsersAndBunksModal(
-                                                            doc.id,
-                                                          ),
-                                                    );
-                                                  },
-                                            icon: Icon(Icons.visibility),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.edit),
-                                            onPressed:
-                                                (data['desactivada'] == true)
-                                                ? null
-                                                : () {
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (context) =>
-                                                          LiterasModal(doc.id),
-                                                    );
-                                                  },
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.delete,
-                                              color:
-                                                  (data['desactivada'] == true)
-                                                  ? Colors.red
-                                                  : Colors.grey[800],
-                                            ),
-                                            onPressed: () async {
-                                              final literasSnap =
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection(
-                                                        'habitaciones',
-                                                      )
-                                                      .doc(doc.id)
-                                                      .collection('literas')
-                                                      .get();
-
-                                              final tieneDatos = literasSnap
-                                                  .docs
-                                                  .any((litera) {
-                                                    final lData = litera.data();
-                                                    return (lData['occupied'] ==
-                                                        true);
-                                                  });
-
-                                              if (tieneDatos) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'No se puede desactivar esta habitación porque tiene literas ocupadas.',
-                                                    ),
-                                                  ),
-                                                );
-                                                return;
-                                              }
-
-                                              final nuevoEstado =
-                                                  !(data['desactivada'] ==
-                                                      true);
-                                              await FirebaseFirestore.instance
-                                                  .collection('habitaciones')
-                                                  .doc(doc.id)
-                                                  .update({
-                                                    'desactivada': nuevoEstado,
-                                                  });
-
-                                              setState(() {});
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                              return SingleChildScrollView(
+                                child: DataTable(
+                                  columns: const [
+                                    DataColumn(label: Text('Nomenclatura')),
+                                    DataColumn(label: Text('Tamaño')),
+                                    DataColumn(label: Text('Disponibilidad')),
+                                    DataColumn(label: Text('Estado')),
+                                    DataColumn(label: Text('Acciones')),
                                   ],
+                                  rows: rows,
                                 ),
                               );
-                            }
-
-                            return SingleChildScrollView(
-                              child: DataTable(
-                                columns: const [
-                                  DataColumn(label: Text('Nomenclatura')),
-                                  DataColumn(label: Text('Tamaño')),
-                                  DataColumn(label: Text('Disponibilidad')),
-                                  DataColumn(label: Text('Estado')),
-                                  DataColumn(label: Text('Acciones')),
-                                ],
-                                rows: rows,
-                              ),
-                            );
-                          },
-                        );
-                      },
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

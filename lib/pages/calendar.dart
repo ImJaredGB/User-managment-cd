@@ -176,7 +176,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                           );
                         }
                         final literas = literasSnapshot.data ?? [];
-                        // Filter literas by searchController.text (case-insensitive, contains in data['id'])
+                        // Filter literas by searchController.text (case-insensitive, by id, nombre, apellidos, nombreCompleto del usuario alojado)
                         final searchText = searchController.text
                             .trim()
                             .toLowerCase();
@@ -188,7 +188,26 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                 final id = (data['id'] ?? '')
                                     .toString()
                                     .toLowerCase();
-                                return id.contains(searchText);
+
+                                // Buscar usuario asociado a esta litera
+                                final usuario = usuariosList.firstWhere(
+                                  (u) => u['litera'] == data['id'],
+                                  orElse: () => <String, dynamic>{},
+                                );
+
+                                final nombre = (usuario['nombres'] ?? '')
+                                    .toString()
+                                    .toLowerCase();
+                                final apellido = (usuario['apellidos'] ?? '')
+                                    .toString()
+                                    .toLowerCase();
+                                final nombreCompleto = '$nombre $apellido'
+                                    .trim();
+
+                                return id.contains(searchText) ||
+                                    nombre.contains(searchText) ||
+                                    apellido.contains(searchText) ||
+                                    nombreCompleto.contains(searchText);
                               }).toList();
 
                         List<DataRow> filas = filteredLiteras.map((literaDoc) {
@@ -449,7 +468,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                   zonaActual = zona;
                                 });
                               },
-                              selectedColor: Colors.blueGrey,
+                              selectedColor: const Color(0xFFA11C25),
                               backgroundColor: const Color.fromARGB(
                                 67,
                                 221,
@@ -461,7 +480,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                 borderRadius: BorderRadius.circular(10),
                                 side: BorderSide(
                                   color: esActivo
-                                      ? Colors.blueGrey
+                                      ? const Color(0xFFA11C25)
                                       : Colors.transparent,
                                   width: 1,
                                 ),
@@ -513,7 +532,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                       zonaActual = zona;
                                     });
                                   },
-                                  selectedColor: Colors.blueGrey,
+                                  selectedColor: const Color(0xFFA11C25),
                                   backgroundColor: const Color.fromARGB(
                                     67,
                                     221,
@@ -525,7 +544,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                     borderRadius: BorderRadius.circular(10),
                                     side: BorderSide(
                                       color: esActivo
-                                          ? Colors.blueGrey
+                                          ? const Color(0xFFA11C25)
                                           : Colors.transparent,
                                       width: 1,
                                     ),
@@ -739,13 +758,13 @@ class _MesesNavigationState extends State<_MesesNavigation> {
                   checkmarkColor: Colors.white,
                   selected: esActivo,
                   onSelected: (_) => widget.onMesSelected(mes),
-                  selectedColor: Colors.blueGrey,
+                  selectedColor: const Color(0xFFA11C25),
                   backgroundColor: const Color.fromARGB(67, 221, 231, 236),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                     side: BorderSide(
                       color: esActivo
-                          ? Colors.blueGrey
+                          ? const Color(0xFFA11C25)
                           : const Color.fromARGB(0, 254, 254, 254),
                       width: 1,
                     ),
@@ -800,13 +819,13 @@ class _MesesNavigationState extends State<_MesesNavigation> {
                       checkmarkColor: Colors.white,
                       selected: esActivo,
                       onSelected: (_) => widget.onMesSelected(mes),
-                      selectedColor: Colors.blueGrey,
+                      selectedColor: const Color(0xFFA11C25),
                       backgroundColor: const Color.fromARGB(67, 221, 231, 236),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                         side: BorderSide(
                           color: esActivo
-                              ? Colors.blueGrey
+                              ? const Color(0xFFA11C25)
                               : const Color.fromARGB(0, 254, 254, 254),
                           width: 1,
                         ),
@@ -873,13 +892,13 @@ class _MesesNavigationState extends State<_MesesNavigation> {
                       checkmarkColor: Colors.white,
                       selected: esActivo,
                       onSelected: (_) => widget.onMesSelected(mes),
-                      selectedColor: Colors.blueGrey,
+                      selectedColor: const Color(0xFFA11C25),
                       backgroundColor: const Color.fromARGB(67, 221, 231, 236),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                         side: BorderSide(
                           color: esActivo
-                              ? Colors.blueGrey
+                              ? const Color(0xFFA11C25)
                               : const Color.fromARGB(0, 254, 254, 254),
                           width: 1,
                         ),

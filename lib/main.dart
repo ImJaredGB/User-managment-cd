@@ -26,7 +26,9 @@ class MyApp extends StatelessWidget {
       title: 'User and Bunk Management',
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromARGB(255, 255, 255, 255),
+        ),
       ),
       home: HomePage(),
     );
@@ -63,7 +65,7 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         backgroundColor: Colors.white,
-        selectedItemColor: Colors.blueGrey, // granate
+        selectedItemColor: const Color(0xFFA11C25), // granate
         unselectedItemColor: Colors.grey,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
