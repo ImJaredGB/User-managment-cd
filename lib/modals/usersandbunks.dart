@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UsersAndBunksModal extends StatelessWidget {
-  final String roomId;
+  final String nombre;
 
-  const UsersAndBunksModal(this.roomId, {super.key});
+  const UsersAndBunksModal(this.nombre, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +23,9 @@ class UsersAndBunksModal extends StatelessWidget {
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('habitaciones')
-                  .doc(roomId)
+                  .doc(nombre)
                   .collection('literas')
-                  .orderBy('id', descending: false)
+                  .orderBy('nombre', descending: false)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
@@ -44,8 +44,7 @@ class UsersAndBunksModal extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final litera =
                           literasDocs[index].data() as Map<String, dynamic>;
-                      final literaId = litera['id'];
-                      final isOccupied = litera['occupied'] == true;
+                      final literaId = '${nombre}_${litera['nombre']}';
 
                       return FutureBuilder<QuerySnapshot>(
                         future: FirebaseFirestore.instance
@@ -54,6 +53,10 @@ class UsersAndBunksModal extends StatelessWidget {
                             .limit(1)
                             .get(),
                         builder: (context, userSnapshot) {
+                          final isOccupied =
+                              userSnapshot.hasData &&
+                              userSnapshot.data!.docs.isNotEmpty;
+
                           return ListTile(
                             leading: Icon(
                               isOccupied ? Icons.bed : Icons.bed_outlined,
@@ -64,9 +67,7 @@ class UsersAndBunksModal extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(isOccupied ? 'Ocupada' : 'Desocupada'),
-                                if (isOccupied &&
-                                    userSnapshot.hasData &&
-                                    userSnapshot.data!.docs.isNotEmpty)
+                                if (isOccupied)
                                   Builder(
                                     builder: (_) {
                                       final userData =

@@ -165,11 +165,13 @@ class _EditUserDialogState extends State<EditUserDialog> {
         for (final literaDoc in literasSnap.docs) {
           final literaData = literaDoc.data();
           final bool occupied = literaData['occupied'] == true;
-          final literaId = literaData['id']?.toString() ?? literaDoc.id;
+          final literaName = literaData['nombre']?.toString() ?? literaDoc.id;
 
           // Mostrar literas no ocupadas o la litera actual del usuario
-          if (!occupied || literaId == _literaSeleccionada) {
-            literas.add(literaId);
+          if (!occupied || literaName == _literaSeleccionada) {
+            if (!literas.contains(literaName)) {
+              literas.add(literaName);
+            }
           }
         }
       }
@@ -225,12 +227,14 @@ class _EditUserDialogState extends State<EditUserDialog> {
               DropdownButtonFormField<String>(
                 value: _tipoDocumento,
                 decoration: InputDecoration(labelText: 'Tipo de Documento'),
-                items: ['DNI', 'Carne de extranjeria']
-                    .map(
-                      (tipo) =>
-                          DropdownMenuItem(value: tipo, child: Text(tipo)),
-                    )
-                    .toList(),
+                items: const [
+                  DropdownMenuItem(value: 'NIE', child: Text('NIE')),
+                  DropdownMenuItem(value: 'DNI', child: Text('DNI')),
+                  DropdownMenuItem(
+                    value: 'Pasaporte',
+                    child: Text('Pasaporte'),
+                  ),
+                ],
                 onChanged: (value) {
                   if (value != null) setState(() => _tipoDocumento = value);
                 },
@@ -408,10 +412,27 @@ class _EditUserDialogState extends State<EditUserDialog> {
                       .collection('literas')
                       .get();
                   for (final literaDoc in literasSnap.docs) {
-                    final literaId =
-                        literaDoc.data()['id']?.toString() ?? literaDoc.id;
-                    if (literaId == _literaSeleccionada) {
-                      await literaDoc.reference.update({'occupied': true});
+                    final literaData = literaDoc.data();
+                    final literaName =
+                        literaData['nombre']?.toString() ?? literaDoc.id;
+
+                    if (literaName == _literaSeleccionada) {
+                      // Asignar residente, fechas y ocupado
+                      await literaDoc.reference.update({
+                        'occupied': true,
+                        'resident': _numeroDocumentoController.text,
+                        'fechaIngreso': _fechaIngreso,
+                        'fechaSalida': _fechaSalida,
+                      });
+
+                      // Si ya venció la fecha de salida, limpiar el residente
+                      if (_fechaSalida != null &&
+                          DateTime.now().isAfter(_fechaSalida!)) {
+                        await literaDoc.reference.update({
+                          'resident': null,
+                          'occupied': false,
+                        });
+                      }
                       break;
                     }
                   }

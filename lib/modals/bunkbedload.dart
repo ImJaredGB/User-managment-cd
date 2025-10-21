@@ -78,7 +78,7 @@ class _LiterasModalState extends State<LiterasModal> {
                 final literasList = literasDocs
                     .map(
                       (doc) => {
-                        'id': doc['id'],
+                        'nombre': doc['nombre'],
                         'active': doc['active'],
                         'occupied': doc['occupied'],
                         'ref': doc.reference,
@@ -89,7 +89,7 @@ class _LiterasModalState extends State<LiterasModal> {
                 // Filter by search (case-insensitive, substring)
                 final filteredLiteras = literasList.where((litera) {
                   if (_searchText.isEmpty) return true;
-                  final id = (litera['id'] ?? '').toString().toLowerCase();
+                  final id = (litera['nombre'] ?? '').toString().toLowerCase();
                   return id.contains(_searchText);
                 }).toList();
 
@@ -100,8 +100,8 @@ class _LiterasModalState extends State<LiterasModal> {
                   if (activeA != activeB) {
                     return activeB - activeA; // active first
                   }
-                  final idA = _parseLiteraId(a['id']);
-                  final idB = _parseLiteraId(b['id']);
+                  final idA = _parseLiteraId(a['nombre']);
+                  final idB = _parseLiteraId(b['nombre']);
                   return idA.compareTo(idB);
                 });
 
@@ -113,7 +113,7 @@ class _LiterasModalState extends State<LiterasModal> {
                       final litera = filteredLiteras[index];
                       final bool isActive = litera['active'] == true;
                       final bool isOccupied = litera['occupied'] == true;
-                      final String literaId = litera['id'] ?? '';
+                      final String literaId = litera['nombre'] ?? '';
                       return ListTile(
                         leading: Icon(
                           isActive ? Icons.bed : Icons.bed_outlined,

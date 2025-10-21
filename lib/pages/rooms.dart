@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rd_user_cd/data/upload_rooms_firestore.dart';
 import '../modals/newroomform.dart';
 import '../modals/bunkbedload.dart';
 import '../modals/usersandbunks.dart';
@@ -90,18 +91,35 @@ class _RoomsPageState extends State<RoomsPage> {
                         icon: const Icon(Icons.refresh),
                         label: const Text('Recargar'),
                         onPressed: () {
-                          setState(
-                            () {},
-                          ); // Fuerza reconstrucción solo de esta sección
+                          setState(() {});
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFA11C25),
-                          foregroundColor: const Color.fromARGB(
-                            255,
-                            255,
-                            255,
-                            255,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide.none,
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.cloud_upload),
+                        label: const Text('Cargar datos'),
+                        onPressed: () async {
+                          await uploadHabitacionesToFirestore();
+                          await updateLiterasStatusInFirestore();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Datos cargados y literas actualizadas en Firestore',
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFA11C25),
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide.none,
@@ -214,7 +232,8 @@ class _RoomsPageState extends State<RoomsPage> {
                                   DataRow(
                                     cells: [
                                       DataCell(
-                                        Text(data['nomenclatura'] ?? '-'),
+                                        // Text(data['nomenclatura'] ?? '-'), // Ignorado temporalmente
+                                        Text(data['nombre'] ?? '-'),
                                       ),
                                       DataCell(Text(totalActivas.toString())),
                                       DataCell(Text(disponibilidad)),

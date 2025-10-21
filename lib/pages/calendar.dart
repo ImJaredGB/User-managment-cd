@@ -368,17 +368,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Calendario"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              _abrirMenuUsuario(context);
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text("Calendario")),
       body: Column(
         children: [
           // 🔍 Toolbar and zones combined with responsive layout
@@ -609,30 +599,6 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
           // 📊 Tabla placeholder
           buildTablaMes(mesActivo, zonaActual, _anioActual),
-        ],
-      ),
-    );
-  }
-
-  // Menú lateral de usuario
-  void _abrirMenuUsuario(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text("Perfil"),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text("Cerrar sesión"),
-            onTap: () {
-              Navigator.pop(ctx);
-            },
-          ),
         ],
       ),
     );

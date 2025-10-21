@@ -1,5 +1,9 @@
+//Modal para añadir un nuevo usuario
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 
 class NewUserModal extends StatefulWidget {
   const NewUserModal({Key? key}) : super(key: key);
@@ -25,7 +29,9 @@ class _NewUserModalState extends State<NewUserModal> {
         'apellidos': _apellidosController.text.trim(),
         'tipoDocumento': _tipoDocumento,
         'numeroDocumento': _numeroDocumentoController.text.trim(),
-        'password': _passwordController.text.trim(),
+        'password': sha256
+            .convert(utf8.encode(_passwordController.text.trim()))
+            .toString(),
       });
       Navigator.of(context).pop();
     }
@@ -57,6 +63,7 @@ class _NewUserModalState extends State<NewUserModal> {
                   labelText: 'Tipo de documento',
                 ),
                 items: const [
+                  DropdownMenuItem(value: 'NIE', child: Text('NIE')),
                   DropdownMenuItem(value: 'DNI', child: Text('DNI')),
                   DropdownMenuItem(
                     value: 'Pasaporte',
