@@ -108,7 +108,6 @@ class _RoomsPageState extends State<RoomsPage> {
                         label: const Text('Cargar datos'),
                         onPressed: () async {
                           await uploadHabitacionesToFirestore();
-                          await updateLiterasStatusInFirestore();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
@@ -118,7 +117,7 @@ class _RoomsPageState extends State<RoomsPage> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFA11C25),
+                          backgroundColor: const Color.fromARGB(255, 161, 28, 37),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),

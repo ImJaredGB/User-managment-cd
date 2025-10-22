@@ -119,7 +119,6 @@ class _CalendarioPageState extends State<CalendarioPage> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                // Filter habitaciones by zona
                 final habitaciones = (snapshot.data?.docs ?? []).where((
                   habitacionDoc,
                 ) {
@@ -127,213 +126,216 @@ class _CalendarioPageState extends State<CalendarioPage> {
                   return data['zona'] == zona;
                 }).toList();
 
-                // Outer FutureBuilder for usuarios
-                return FutureBuilder<QuerySnapshot>(
-                  future: FirebaseFirestore.instance
-                      .collection('usuarios')
-                      .get(),
-                  builder: (context, usuariosSnapshot) {
-                    if (usuariosSnapshot.hasError) {
+                // Nueva lógica: obtenemos las literas directamente desde Firestore con datos actuales
+                return FutureBuilder<List<QueryDocumentSnapshot>>(
+                  future:
+                      Future.wait(
+                        habitaciones.map((habitacionDoc) async {
+                          final literasSnapshot = await habitacionDoc.reference
+                              .collection('literas')
+                              .get();
+                          return literasSnapshot.docs;
+                        }),
+                      ).then(
+                        (listOfLists) => listOfLists.expand((x) => x).toList(),
+                      ),
+                  builder: (context, literasSnapshot) {
+                    if (literasSnapshot.hasError) {
                       return Center(
-                        child: Text('Error: ${usuariosSnapshot.error}'),
+                        child: Text('Error: ${literasSnapshot.error}'),
                       );
                     }
-                    if (usuariosSnapshot.connectionState ==
+                    if (literasSnapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    final usuariosDocs = usuariosSnapshot.data?.docs ?? [];
-                    // List of usuario maps, for easier lookup
-                    final usuariosList = usuariosDocs
-                        .map((doc) => doc.data() as Map<String, dynamic>)
-                        .toList();
 
-                    return FutureBuilder<List<QueryDocumentSnapshot>>(
-                      future:
-                          Future.wait(
-                            habitaciones.map((habitacionDoc) async {
-                              final literasSnapshot = await habitacionDoc
-                                  .reference
-                                  .collection('literas')
-                                  .where('occupied', isEqualTo: true)
-                                  .get();
-                              return literasSnapshot.docs;
-                            }),
-                          ).then(
-                            (listOfLists) =>
-                                listOfLists.expand((x) => x).toList(),
-                          ),
-                      builder: (context, literasSnapshot) {
-                        if (literasSnapshot.hasError) {
-                          return Center(
-                            child: Text('Error: ${literasSnapshot.error}'),
-                          );
-                        }
-                        if (literasSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        final literas = literasSnapshot.data ?? [];
-                        // Filter literas by searchController.text (case-insensitive, by id, nombre, apellidos, nombreCompleto del usuario alojado)
-                        final searchText = searchController.text
-                            .trim()
-                            .toLowerCase();
-                        final filteredLiteras = searchText.isEmpty
-                            ? literas
-                            : literas.where((literaDoc) {
-                                final data =
-                                    literaDoc.data() as Map<String, dynamic>;
-                                final id = (data['id'] ?? '')
-                                    .toString()
-                                    .toLowerCase();
+                    final literas = literasSnapshot.data ?? [];
+                    final searchText = searchController.text
+                        .trim()
+                        .toLowerCase();
 
-                                // Buscar usuario asociado a esta litera
-                                final usuario = usuariosList.firstWhere(
-                                  (u) => u['litera'] == data['id'],
-                                  orElse: () => <String, dynamic>{},
-                                );
+                    final filteredLiteras =
+                        (searchText.isEmpty
+                                ? literas
+                                : literas.where((literaDoc) {
+                                    final data =
+                                        literaDoc.data()
+                                            as Map<String, dynamic>;
+                                    final nombre = (data['nombres'] ?? '')
+                                        .toString()
+                                        .toLowerCase();
+                                    final resident = (data['resident'] ?? '')
+                                        .toString()
+                                        .toLowerCase();
+                                    return nombre.contains(searchText) ||
+                                        resident.contains(searchText);
+                                  }).toList())
+                            // Mostrar solo literas con un residente asignado por defecto
+                            .where((literaDoc) {
+                              final data =
+                                  literaDoc.data() as Map<String, dynamic>;
+                              final resident = (data['resident'] ?? '')
+                                  .toString()
+                                  .trim();
+                              return resident.isNotEmpty;
+                            })
+                            .toList();
 
-                                final nombre = (usuario['nombres'] ?? '')
-                                    .toString()
-                                    .toLowerCase();
-                                final apellido = (usuario['apellidos'] ?? '')
-                                    .toString()
-                                    .toLowerCase();
-                                final nombreCompleto = '$nombre $apellido'
-                                    .trim();
+                    List<DataRow> filas = filteredLiteras.map((literaDoc) {
+                      final data = literaDoc.data() as Map<String, dynamic>;
+                      final literaName = data['nombre'] ?? '-';
+                      final resident = data['resident'] ?? '-';
+                      final fechaIngreso = (data['fechaIngreso'] is Timestamp)
+                          ? (data['fechaIngreso'] as Timestamp).toDate()
+                          : null;
+                      final fechaSalida = (data['fechaSalida'] is Timestamp)
+                          ? (data['fechaSalida'] as Timestamp).toDate()
+                          : null;
+                      final occupied = data['occupied'] == true;
+                      final active = data['active'] == true;
 
-                                return id.contains(searchText) ||
-                                    nombre.contains(searchText) ||
-                                    apellido.contains(searchText) ||
-                                    nombreCompleto.contains(searchText);
-                              }).toList();
+                      // Generar las celdas por día
+                      List<DataCell> diaCeldas = List.generate(
+                        endDia - startDia,
+                        (index) {
+                          final dia = startDia + index + 1;
+                          bool ocupado = false;
 
-                        List<DataRow> filas = filteredLiteras.map((literaDoc) {
-                          final data = literaDoc.data() as Map<String, dynamic>;
-                          final literaId = data['id'];
-                          // Buscar usuario que tenga esta litera asignada
-                          final usuario = usuariosList.firstWhere(
-                            (u) => u['litera'] == literaId,
-                            orElse: () => <String, dynamic>{},
-                          );
-                          DateTime? fechaIngreso;
-                          DateTime? fechaSalida;
-                          if (usuario.isNotEmpty) {
-                            final ingreso = usuario['fechaIngreso'];
-                            final salida = usuario['fechaSalida'];
-                            if (ingreso is Timestamp) {
-                              fechaIngreso = ingreso.toDate();
-                            }
-                            if (salida is Timestamp) {
-                              fechaSalida = salida.toDate();
+                          if (fechaIngreso != null && fechaSalida != null) {
+                            final primerDiaMes = DateTime(
+                              anioActual,
+                              mesIndex,
+                              1,
+                            );
+                            final ultimoDiaMes = DateTime(
+                              anioActual,
+                              mesIndex,
+                              totalDias,
+                            );
+                            final inicio = fechaIngreso.isAfter(primerDiaMes)
+                                ? fechaIngreso
+                                : primerDiaMes;
+                            final fin = fechaSalida.isBefore(ultimoDiaMes)
+                                ? fechaSalida
+                                : ultimoDiaMes;
+
+                            if (!fin.isBefore(inicio)) {
+                              ocupado = dia >= inicio.day && dia <= fin.day;
                             }
                           }
-                          // Nueva lógica: celdas verdes por días ocupados, grises por días libres
-                          List<DataCell> diaCeldas = List.generate(
-                            endDia - startDia,
-                            (index) {
-                              final dia = startDia + index + 1;
-                              bool ocupado = false;
 
-                              if (fechaIngreso != null && fechaSalida != null) {
-                                final primerDiaMes = DateTime(
-                                  anioActual,
-                                  mesIndex,
-                                  1,
-                                );
-                                final ultimoDiaMes = DateTime(
-                                  anioActual,
-                                  mesIndex,
-                                  totalDias,
-                                );
-                                final inicio =
-                                    fechaIngreso.isAfter(primerDiaMes)
-                                    ? fechaIngreso
-                                    : primerDiaMes;
-                                final fin = fechaSalida.isBefore(ultimoDiaMes)
-                                    ? fechaSalida
-                                    : ultimoDiaMes;
+                          return DataCell(
+                            Container(
+                              height: 18,
+                              width: 20,
+                              decoration: BoxDecoration(
+                                color: ocupado
+                                    ? Colors.green
+                                    : (active
+                                          ? Colors.grey[300]
+                                          : Colors.red[100]),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          );
+                        },
+                      );
 
-                                if (!fin.isBefore(inicio)) {
-                                  ocupado = dia >= inicio.day && dia <= fin.day;
-                                }
-                              }
-
-                              return DataCell(
-                                Container(
-                                  height: 18,
-                                  width: 20,
-                                  decoration: BoxDecoration(
-                                    color: ocupado
-                                        ? Colors.green
-                                        : Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  literaName,
+                                  style: const TextStyle(fontSize: 12),
                                 ),
-                              );
-                            },
-                          );
+                                // FutureBuilder para mostrar el nombre del residente en vez del DNI, buscando por numeroDocumento
+                                if (resident != '-' &&
+                                    resident.toString().trim().isNotEmpty)
+                                  FutureBuilder<QuerySnapshot>(
+                                    future: FirebaseFirestore.instance
+                                        .collection('usuarios')
+                                        .where(
+                                          'numeroDocumento',
+                                          isEqualTo: resident,
+                                        )
+                                        .limit(1)
+                                        .get(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const SizedBox(
+                                          height: 12,
+                                          width: 40,
+                                          child: LinearProgressIndicator(
+                                            minHeight: 2,
+                                          ),
+                                        );
+                                      }
+                                      if (snapshot.hasError) {
+                                        return Text(
+                                          resident,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.red,
+                                          ),
+                                        );
+                                      }
 
-                          String? nombreUsuarioActual;
-                          if (usuario.isNotEmpty &&
-                              fechaIngreso != null &&
-                              fechaSalida != null) {
-                            final now = DateTime.now();
-                            if (!now.isBefore(fechaIngreso) &&
-                                !now.isAfter(fechaSalida)) {
-                              final nombre = (usuario['nombres'] ?? '')
-                                  .toString();
-                              final apellido = (usuario['apellidos'] ?? '')
-                                  .toString();
-                              nombreUsuarioActual = '$nombre $apellido'.trim();
-                            }
-                          }
+                                      final docs = snapshot.data?.docs ?? [];
+                                      if (docs.isEmpty) {
+                                        return Text(
+                                          resident,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
+                                        );
+                                      }
 
-                          return DataRow(
-                            cells: [
-                              DataCell(
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      data['id'] ?? '-',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                    if (nombreUsuarioActual != null)
-                                      Text(
-                                        nombreUsuarioActual,
+                                      final userData =
+                                          docs.first.data()
+                                              as Map<String, dynamic>;
+                                      final nombreResidente =
+                                          userData['nombres'] ?? resident;
+
+                                      return Text(
+                                        nombreResidente,
                                         style: const TextStyle(
                                           fontSize: 10,
                                           color: Colors.grey,
                                         ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              ...diaCeldas,
-                            ],
-                          );
-                        }).toList();
-
-                        // Wrap DataTable in vertical and horizontal scroll views, and ensure full width
-                        return SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: MediaQuery.of(context).size.width,
-                              child: DataTable(
-                                columnSpacing: 10,
-                                horizontalMargin: 4,
-                                columns: columnas,
-                                rows: filas,
-                              ),
+                                      );
+                                    },
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                              ],
                             ),
                           ),
-                        );
-                      },
+                          ...diaCeldas,
+                        ],
+                      );
+                    }).toList();
+
+                    // Mostrar la tabla final
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width,
+                          child: DataTable(
+                            columnSpacing: 10,
+                            horizontalMargin: 4,
+                            columns: columnas,
+                            rows: filas,
+                          ),
+                        ),
+                      ),
                     );
                   },
                 );

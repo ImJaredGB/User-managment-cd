@@ -21,6 +21,11 @@ Future<void> uploadHabitacionesToFirestore() async {
       for (var level in levels) {
         await habitacionDoc.collection('literas').doc(level).set({
           'nombre': level,
+          'active': true,
+          'fechaIngreso': null,
+          'fechaSalida': null,
+          'occupied': false,
+          'resident': null,
         });
       }
 
