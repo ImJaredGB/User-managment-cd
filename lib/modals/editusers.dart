@@ -158,28 +158,33 @@ class _EditUserDialogState extends State<EditUserDialog> {
           .where('zona', isEqualTo: zona)
           .get();
 
-      List<String> literas = [];
-
-      for (final habDoc in habitacionesQuery.docs) {
+      // Ejecutar todas las consultas de literas en paralelo
+      final futures = habitacionesQuery.docs.map((habDoc) async {
         final literasSnap = await habDoc.reference.collection('literas').get();
-        for (final literaDoc in literasSnap.docs) {
-          final literaData = literaDoc.data();
-          final bool occupied = literaData['occupied'] == true;
-          final literaName = literaData['nombre']?.toString() ?? literaDoc.id;
+        return literasSnap.docs
+            .map((literaDoc) {
+              final literaData = literaDoc.data();
+              final bool occupied = literaData['occupied'] == true;
+              final literaName =
+                  literaData['nombre']?.toString() ?? literaDoc.id;
 
-          // Mostrar literas no ocupadas o la litera actual del usuario
-          if (!occupied || literaName == _literaSeleccionada) {
-            if (!literas.contains(literaName)) {
-              literas.add(literaName);
-            }
-          }
-        }
-      }
+              // Mostrar literas no ocupadas o la litera actual del usuario
+              if (!occupied || literaName == _literaSeleccionada) {
+                return literaName;
+              }
+              return null;
+            })
+            .whereType<String>()
+            .toList();
+      });
+
+      // Esperar a que todas las consultas terminen y combinar los resultados
+      final resultados = await Future.wait(futures);
+      final literas = resultados.expand((list) => list).toSet().toList();
 
       setState(() {
         _literasZona = literas;
         if (initial) {
-          // Keep selection if valid
           if (_literaSeleccionada != null &&
               !_literasZona.contains(_literaSeleccionada)) {
             _literaSeleccionada = null;
