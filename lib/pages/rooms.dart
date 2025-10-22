@@ -16,6 +16,15 @@ class _RoomsPageState extends State<RoomsPage> {
   final List<String> zones = ['Castillo', 'Restaurante', 'Piso', 'Vilanova'];
   String selectedZone = 'Castillo';
   String searchQuery = '';
+  bool _ocultarInactivas = false;
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +116,7 @@ class _RoomsPageState extends State<RoomsPage> {
                         icon: const Icon(Icons.cloud_upload),
                         label: const Text('Cargar datos'),
                         onPressed: () async {
-                          await uploadHabitacionesToFirestore();
+                          await updateHabitacionesStatusInFirestore();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
@@ -117,7 +126,12 @@ class _RoomsPageState extends State<RoomsPage> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(255, 161, 28, 37),
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            161,
+                            28,
+                            37,
+                          ),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -161,9 +175,16 @@ class _RoomsPageState extends State<RoomsPage> {
                             final nomenclatura = (data['nomenclatura'] ?? '')
                                 .toString()
                                 .toLowerCase();
-                            return nomenclatura.contains(
+                            final matchesSearch = nomenclatura.contains(
                               searchQuery.toLowerCase(),
                             );
+
+                            // Mostrar solo si no estamos ocultando inactivas o la habitación no está desactivada
+                            final isVisible =
+                                !_ocultarInactivas ||
+                                data['desactivada'] != true;
+
+                            return matchesSearch && isVisible;
                           }).toList();
 
                           // Prepare a future per habitacion to get its active literas
@@ -424,13 +445,24 @@ class _RoomsPageState extends State<RoomsPage> {
                   SizedBox(height: 8),
                   ElevatedButton.icon(
                     icon: Icon(Icons.tune),
-                    label: Text('Organizar'),
+                    label: Text('Ocultar inactivas'),
                     onPressed: () {
-                      // Placeholder for organize action
+                      setState(() {
+                        _ocultarInactivas = !_ocultarInactivas;
+                      });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color.fromARGB(255, 241, 241, 241),
-                      foregroundColor: const Color.fromARGB(221, 0, 0, 0),
+                      backgroundColor: _ocultarInactivas
+                          ? const Color(0xFFA11C25) // color activo
+                          : const Color.fromARGB(
+                              255,
+                              241,
+                              241,
+                              241,
+                            ), // color inactivo
+                      foregroundColor: _ocultarInactivas
+                          ? Colors.white
+                          : const Color.fromARGB(221, 0, 0, 0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                         side: BorderSide.none,

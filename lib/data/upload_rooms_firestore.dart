@@ -70,3 +70,34 @@ Future<void> updateLiterasStatusInFirestore() async {
 
   print('🚀 Total de literas actualizadas: $totalLiteras');
 }
+
+Future<void> updateHabitacionesStatusInFirestore() async {
+  final firestore = FirebaseFirestore.instance;
+  final habitacionesSnapshot = await firestore.collection('habitaciones').get();
+
+  int totalHabitaciones = 0;
+
+  for (var habitacionDoc in habitacionesSnapshot.docs) {
+    final data = habitacionDoc.data();
+    final nombre = data['nombre'];
+    final zona = data['zona'];
+    try {
+      await habitacionDoc.reference.set({
+        'desactivada': false,
+        'nombre': nombre,
+        'zona': zona,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // Si hay error, también intentamos crearlo con los campos requeridos
+      await habitacionDoc.reference.set({
+        'desactivada': false,
+        'nombre': nombre,
+        'zona': zona,
+      }, SetOptions(merge: true));
+    }
+    print('✅ Habitación ${habitacionDoc.id} actualizada.');
+    totalHabitaciones++;
+  }
+
+  print('🚀 Total de habitaciones actualizadas: $totalHabitaciones');
+}
