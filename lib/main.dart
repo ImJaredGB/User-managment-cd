@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'pages/calendar.dart';
 import 'pages/rooms.dart';
 import 'pages/users.dart';
+import 'pages/payments.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -49,6 +50,7 @@ class _HomePageState extends State<HomePage> {
     CalendarioPage(),
     RoomsPage(),
     UsersPage(),
+    PaymentsPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -77,6 +79,7 @@ class _HomePageState extends State<HomePage> {
             label: 'Habitaciones',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Usuarios'),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: 'Pagos'),
         ],
       ),
     );

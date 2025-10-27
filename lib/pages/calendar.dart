@@ -30,6 +30,27 @@ class _CalendarioPageState extends State<CalendarioPage> {
     _precargarDatos();
   }
 
+  Future<List<QueryDocumentSnapshot>> _cargarLiterasPorLotes(
+    List<QueryDocumentSnapshot> habitaciones,
+  ) async {
+    List<QueryDocumentSnapshot> todasLasLiteras = [];
+    const int loteTamano = 5; // cantidad de habitaciones por lote
+
+    for (int i = 0; i < habitaciones.length; i += loteTamano) {
+      final lote = habitaciones.skip(i).take(loteTamano);
+      final futures = lote.map((habDoc) async {
+        final literasSnapshot = await habDoc.reference
+            .collection('literas')
+            .get();
+        return literasSnapshot.docs;
+      });
+      final literasLote = await Future.wait(futures);
+      todasLasLiteras.addAll(literasLote.expand((x) => x));
+    }
+
+    return todasLasLiteras;
+  }
+
   Future<void> _precargarDatos() async {
     try {
       // Cargar todos los usuarios
@@ -48,15 +69,9 @@ class _CalendarioPageState extends State<CalendarioPage> {
             .get();
         _habitacionesCache[zona] = habSnapshot.docs;
 
-        // Cargar todas las literas de cada habitación
-        final futures = habSnapshot.docs.map((habDoc) async {
-          final literasSnapshot = await habDoc.reference
-              .collection('literas')
-              .get();
-          return literasSnapshot.docs;
-        });
-        final literasList = await Future.wait(futures);
-        _literasCache[zona] = literasList.expand((x) => x).toList();
+        // Cargar todas las literas de cada habitación en lotes
+        final literasList = await _cargarLiterasPorLotes(habSnapshot.docs);
+        _literasCache[zona] = literasList;
       }
       setState(() {
         _cargandoCache = false;
