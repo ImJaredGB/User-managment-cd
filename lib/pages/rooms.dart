@@ -139,6 +139,134 @@ class _RoomsPageState extends State<RoomsPage> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.bed_outlined),
+                        label: const Text('Liberar literas'),
+                        onPressed: () async {
+                          // Mostrar animación de carga
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (BuildContext context) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
+                          );
+
+                          final hoy = DateTime.now();
+                          List<String> literasLiberadas = [];
+
+                          final usuariosSnapshot = await FirebaseFirestore
+                              .instance
+                              .collection('usuarios')
+                              .get();
+
+                          for (final usuarioDoc in usuariosSnapshot.docs) {
+                            final data =
+                                usuarioDoc.data() as Map<String, dynamic>;
+                            final fechaSalidaRaw = data['fechaSalida'];
+                            DateTime? fechaSalida;
+
+                            if (fechaSalidaRaw is Timestamp) {
+                              fechaSalida = fechaSalidaRaw.toDate();
+                            } else if (fechaSalidaRaw is String) {
+                              fechaSalida = DateTime.tryParse(fechaSalidaRaw);
+                            }
+
+                            if (fechaSalida != null &&
+                                !fechaSalida.isAfter(hoy)) {
+                              final numeroDocumento = data['numeroDocumento'];
+                              final zona = data['zona'];
+                              final litera = data['litera'];
+
+                              if (zona != null && litera != null) {
+                                // Buscar habitación en esa zona
+                                final habitacionesQuery =
+                                    await FirebaseFirestore.instance
+                                        .collection('habitaciones')
+                                        .where('zona', isEqualTo: zona)
+                                        .get();
+
+                                for (final habDoc in habitacionesQuery.docs) {
+                                  final literasSnap = await habDoc.reference
+                                      .collection('literas')
+                                      .get();
+                                  for (final literaDoc in literasSnap.docs) {
+                                    final literaData = literaDoc.data();
+                                    final literaName =
+                                        literaData['nombre']?.toString() ??
+                                        literaDoc.id;
+
+                                    if (literaName == litera) {
+                                      await literaDoc.reference.update({
+                                        'occupied': false,
+                                        'resident': null,
+                                        'fechaIngreso': null,
+                                        'fechaSalida': null,
+                                      });
+                                      literasLiberadas.add(
+                                        '$zona - ${literaDoc.id}',
+                                      );
+                                    }
+                                  }
+                                }
+
+                                // Actualizar usuario: guardar literaAnterior y limpiar litera actual
+                                await usuarioDoc.reference.update({
+                                  'literaAnterior': litera,
+                                  'litera': null,
+                                  'fechaIngreso': null,
+                                  'fechaSalida': null,
+                                });
+                              }
+                            }
+                          }
+
+                          // Cerrar animación de carga
+                          Navigator.of(context).pop();
+
+                          // Mostrar modal con literas liberadas
+                          await showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: const Text('Literas liberadas'),
+                                content: SizedBox(
+                                  width: 300,
+                                  child: literasLiberadas.isEmpty
+                                      ? const Text('No se liberaron literas.')
+                                      : SingleChildScrollView(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: literasLiberadas
+                                                .map((lit) => Text('• $lit'))
+                                                .toList(),
+                                          ),
+                                        ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    child: const Text('Cerrar'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFA11C25),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide.none,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: 8),
@@ -237,16 +365,23 @@ class _RoomsPageState extends State<RoomsPage> {
                                     )
                                     .length;
 
-                                String disponibilidad;
-                                if (totalActivas == 0) {
-                                  disponibilidad = 'Disponible';
-                                } else if (ocupadas == 0) {
-                                  disponibilidad = 'Disponible';
-                                } else if (ocupadas == totalActivas) {
-                                  disponibilidad = 'Lleno';
-                                } else {
-                                  disponibilidad = 'Disponible';
-                                }
+                                // Calcular disponibilidad real considerando solo literas activas
+                                final literasData = literasActivas
+                                    .map(
+                                      (l) => l.data() as Map<String, dynamic>,
+                                    )
+                                    .toList();
+                                final literasActivasValidas = literasData
+                                    .where((l) => l['active'] == true)
+                                    .toList();
+                                final bool hayLiterasDisponibles =
+                                    literasActivasValidas.any(
+                                      (l) => l['occupied'] == false,
+                                    );
+
+                                String disponibilidad = hayLiterasDisponibles
+                                    ? 'Disponible'
+                                    : 'Ocupada';
 
                                 rows.add(
                                   DataRow(

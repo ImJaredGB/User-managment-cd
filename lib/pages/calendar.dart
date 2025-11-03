@@ -218,6 +218,8 @@ class _CalendarioPageState extends State<CalendarioPage> {
       List<DataCell> diaCeldas = List.generate(endDia - startDia, (index) {
         final dia = startDia + index + 1;
         bool ocupado = false;
+        bool esPasado = false;
+        final hoy = DateTime.now();
 
         if (fechaIngreso != null && fechaSalida != null) {
           final primerDiaMes = DateTime(anioActual, mesIndex, 1);
@@ -231,7 +233,18 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
           if (!fin.isBefore(inicio)) {
             ocupado = dia >= inicio.day && dia <= fin.day;
+            final diaActual = DateTime(anioActual, mesIndex, dia);
+            esPasado = diaActual.isBefore(
+              DateTime(hoy.year, hoy.month, hoy.day),
+            );
           }
+        }
+
+        Color? colorCelda;
+        if (ocupado) {
+          colorCelda = esPasado ? Colors.orange : Colors.green;
+        } else {
+          colorCelda = active ? Colors.grey[300] : Colors.red[100];
         }
 
         return DataCell(
@@ -239,9 +252,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
             height: 18,
             width: 20,
             decoration: BoxDecoration(
-              color: ocupado
-                  ? Colors.green
-                  : (active ? Colors.grey[300] : Colors.red[100]),
+              color: colorCelda,
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -658,163 +669,70 @@ class _MesesNavigationState extends State<_MesesNavigation> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
+
+    int mesesPorPagina;
+    List<String> mesesFormateados;
+
     if (width > 900) {
-      // Mostrar todos los meses en una fila, con padding horizontal 10.0 cada uno
-      return SizedBox(
-        height: 50,
-        child: Row(
-          children: widget.meses.map((mes) {
-            final esActivo = mes == widget.mesActivo;
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: ChoiceChip(
-                  label: Text(
-                    mes,
-                    style: TextStyle(
-                      color: esActivo
-                          ? const Color.fromARGB(255, 255, 255, 255)
-                          : const Color.fromARGB(221, 0, 0, 0),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  checkmarkColor: Colors.white,
-                  selected: esActivo,
-                  onSelected: (_) => widget.onMesSelected(mes),
-                  selectedColor: const Color(0xFFA11C25),
-                  backgroundColor: const Color.fromARGB(67, 221, 231, 236),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(
-                      color: esActivo
-                          ? const Color(0xFFA11C25)
-                          : const Color.fromARGB(0, 254, 254, 254),
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    } else if (width > 700 && width <= 900) {
-      // Agrupar meses en páginas de 6
-      const int mesesPorPagina = 6;
-      int totalPaginas = (widget.meses.length / mesesPorPagina).ceil();
-      int start = _paginaMeses * mesesPorPagina;
-      int end = (start + mesesPorPagina).clamp(0, widget.meses.length);
-      List<String> mesesPagina = widget.meses.sublist(start, end);
-
-      return SizedBox(
-        height: 50,
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_left),
-              onPressed: _paginaMeses > 0
-                  ? () {
-                      setState(() {
-                        _paginaMeses--;
-                      });
-                    }
-                  : null,
-            ),
-            Expanded(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 0,
-                runSpacing: 0,
-                children: mesesPagina.map((mes) {
-                  final esActivo = mes == widget.mesActivo;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                    child: ChoiceChip(
-                      label: Text(
-                        mes,
-                        style: TextStyle(
-                          color: esActivo
-                              ? const Color.fromARGB(255, 255, 255, 255)
-                              : const Color.fromARGB(221, 0, 0, 0),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      checkmarkColor: Colors.white,
-                      selected: esActivo,
-                      onSelected: (_) => widget.onMesSelected(mes),
-                      selectedColor: const Color(0xFFA11C25),
-                      backgroundColor: const Color.fromARGB(67, 221, 231, 236),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(
-                          color: esActivo
-                              ? const Color(0xFFA11C25)
-                              : const Color.fromARGB(0, 254, 254, 254),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.arrow_right),
-              onPressed: _paginaMeses < totalPaginas - 1
-                  ? () {
-                      setState(() {
-                        _paginaMeses++;
-                      });
-                    }
-                  : null,
-            ),
-          ],
-        ),
-      );
+      mesesPorPagina = 12; // Todos los meses visibles
+      mesesFormateados = widget.meses; // Nombres completos
+    } else if (width > 700) {
+      mesesPorPagina = 6;
+      mesesFormateados = widget.meses
+          .map((m) => m.substring(0, 3))
+          .toList(); // 3 letras
     } else {
-      // Agrupar meses en páginas de 4
-      const int mesesPorPagina = 4;
-      int totalPaginas = (widget.meses.length / mesesPorPagina).ceil();
-      int start = _paginaMeses * mesesPorPagina;
-      int end = (start + mesesPorPagina).clamp(0, widget.meses.length);
-      List<String> mesesPagina = widget.meses.sublist(start, end);
+      mesesPorPagina = 4;
+      mesesFormateados = widget.meses
+          .map((m) => m.substring(0, 3))
+          .toList(); // también 3 letras
+    }
 
-      return SizedBox(
-        height: 50,
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_left),
-              onPressed: _paginaMeses > 0
-                  ? () {
-                      setState(() {
-                        _paginaMeses--;
-                      });
-                    }
-                  : null,
-            ),
-            Expanded(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 0,
-                runSpacing: 0,
-                children: mesesPagina.map((mes) {
-                  final esActivo = mes == widget.mesActivo;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+    int totalPaginas = (mesesFormateados.length / mesesPorPagina).ceil();
+    int start = _paginaMeses * mesesPorPagina;
+    int end = (start + mesesPorPagina).clamp(0, mesesFormateados.length);
+    List<String> mesesPagina = mesesFormateados.sublist(start, end);
+
+    return SizedBox(
+      height: 50,
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_left),
+            onPressed: _paginaMeses > 0
+                ? () {
+                    setState(() {
+                      _paginaMeses--;
+                    });
+                  }
+                : null,
+          ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: mesesPagina.map((mes) {
+                final mesOriginal = widget.meses[mesesFormateados.indexOf(mes)];
+                final esActivo = mesOriginal == widget.mesActivo;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
                     child: ChoiceChip(
-                      label: Text(
-                        mes,
-                        style: TextStyle(
-                          color: esActivo
-                              ? const Color.fromARGB(255, 255, 255, 255)
-                              : const Color.fromARGB(221, 0, 0, 0),
-                          fontWeight: FontWeight.w500,
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          mes,
+                          style: TextStyle(
+                            fontSize: 12, // tamaño de fuente fijo
+                            color: esActivo
+                                ? Colors.white
+                                : const Color.fromARGB(221, 0, 0, 0),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       checkmarkColor: Colors.white,
                       selected: esActivo,
-                      onSelected: (_) => widget.onMesSelected(mes),
+                      onSelected: (_) => widget.onMesSelected(mesOriginal),
                       selectedColor: const Color(0xFFA11C25),
                       backgroundColor: const Color.fromARGB(67, 221, 231, 236),
                       shape: RoundedRectangleBorder(
@@ -822,28 +740,28 @@ class _MesesNavigationState extends State<_MesesNavigation> {
                         side: BorderSide(
                           color: esActivo
                               ? const Color(0xFFA11C25)
-                              : const Color.fromARGB(0, 254, 254, 254),
+                              : Colors.transparent,
                           width: 1,
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
-            IconButton(
-              icon: const Icon(Icons.arrow_right),
-              onPressed: _paginaMeses < totalPaginas - 1
-                  ? () {
-                      setState(() {
-                        _paginaMeses++;
-                      });
-                    }
-                  : null,
-            ),
-          ],
-        ),
-      );
-    }
+          ),
+          IconButton(
+            icon: const Icon(Icons.arrow_right),
+            onPressed: _paginaMeses < totalPaginas - 1
+                ? () {
+                    setState(() {
+                      _paginaMeses++;
+                    });
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
   }
 }

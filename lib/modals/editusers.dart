@@ -164,12 +164,15 @@ class _EditUserDialogState extends State<EditUserDialog> {
         return literasSnap.docs
             .map((literaDoc) {
               final literaData = literaDoc.data();
-              final bool occupied = literaData['occupied'] == true;
-              final literaName =
+              final bool occupied = (literaData['occupied'] == true);
+              final String? resident = literaData['resident']?.toString();
+              final String literaName =
                   literaData['nombre']?.toString() ?? literaDoc.id;
 
-              // Mostrar literas no ocupadas o la litera actual del usuario
-              if (!occupied || literaName == _literaSeleccionada) {
+              // Mostrar literas no ocupadas, sin residente o la litera actual del usuario
+              if (!occupied ||
+                  resident == null ||
+                  literaName == _literaSeleccionada) {
                 return literaName;
               }
               return null;
@@ -429,15 +432,6 @@ class _EditUserDialogState extends State<EditUserDialog> {
                         'fechaIngreso': _fechaIngreso,
                         'fechaSalida': _fechaSalida,
                       });
-
-                      // Si ya venció la fecha de salida, limpiar el residente
-                      if (_fechaSalida != null &&
-                          DateTime.now().isAfter(_fechaSalida!)) {
-                        await literaDoc.reference.update({
-                          'resident': null,
-                          'occupied': false,
-                        });
-                      }
                       break;
                     }
                   }
