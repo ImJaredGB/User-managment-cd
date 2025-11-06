@@ -13,10 +13,29 @@ class EditUserDialog extends StatefulWidget {
 }
 
 class _EditUserDialogState extends State<EditUserDialog> {
+  String _nombreMes(int mes) {
+    const nombres = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+    return nombres[mes - 1];
+  }
+
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nombresController;
   late TextEditingController _apellidosController;
   late TextEditingController _numeroDocumentoController;
+  late TextEditingController _correoController;
   late String _tipoDocumento;
   late bool _estado;
   late DateTime? _fechaIngreso;
@@ -46,6 +65,9 @@ class _EditUserDialogState extends State<EditUserDialog> {
     _numeroDocumentoController = TextEditingController(
       text: data['numeroDocumento']?.toString() ?? '',
     );
+    _correoController = TextEditingController(
+      text: data['correo']?.toString() ?? '',
+    );
     _tipoDocumento = data['tipoDocumento']?.toString() ?? 'DNI';
     _estado = data['estado'] ?? true;
 
@@ -72,6 +94,7 @@ class _EditUserDialogState extends State<EditUserDialog> {
     _nombresController.dispose();
     _apellidosController.dispose();
     _numeroDocumentoController.dispose();
+    _correoController.dispose();
     _fechaIngresoController.dispose();
     _fechaSalidaController.dispose();
     super.dispose();
@@ -254,6 +277,13 @@ class _EditUserDialogState extends State<EditUserDialog> {
                     ? 'Ingrese número de documento'
                     : null,
               ),
+              TextFormField(
+                controller: _correoController,
+                decoration: const InputDecoration(
+                  labelText: 'Correo (registrar correo)',
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -401,6 +431,9 @@ class _EditUserDialogState extends State<EditUserDialog> {
                 'apellidos': _apellidosController.text,
                 'tipoDocumento': _tipoDocumento,
                 'numeroDocumento': _numeroDocumentoController.text,
+                'correo': _correoController.text.isNotEmpty
+                    ? _correoController.text
+                    : null,
                 'estado': _estado,
                 'fechaIngreso': _fechaIngreso,
                 'fechaSalida': _fechaSalida,
@@ -408,6 +441,34 @@ class _EditUserDialogState extends State<EditUserDialog> {
                 'litera': _literaSeleccionada,
               };
               await widget.usuarioDoc.reference.update(updatedData);
+
+              // Generar subcolección 'pagos' si fechas definidas
+              if (_fechaIngreso != null && _fechaSalida != null) {
+                final pagosRef = widget.usuarioDoc.reference.collection(
+                  'pagos',
+                );
+                // Limpiar pagos previos antes de regenerar
+                final pagosPrevios = await pagosRef.get();
+                for (final pagoDoc in pagosPrevios.docs) {
+                  await pagoDoc.reference.delete();
+                }
+                // Crear registros de meses entre ingreso y salida
+                DateTime current = DateTime(
+                  _fechaIngreso!.year,
+                  _fechaIngreso!.month,
+                );
+                final end = DateTime(_fechaSalida!.year, _fechaSalida!.month);
+                while (!current.isAfter(end)) {
+                  final nombreMes = _nombreMes(current.month);
+                  await pagosRef.doc(nombreMes).set({
+                    'mes': nombreMes,
+                    'anio': current.year,
+                    'pagado': false,
+                    'timestampCreacion': FieldValue.serverTimestamp(),
+                  });
+                  current = DateTime(current.year, current.month + 1);
+                }
+              }
 
               if (_zonaSeleccionada != null && _literaSeleccionada != null) {
                 final habitacionesQuery = await FirebaseFirestore.instance
