@@ -1,5 +1,5 @@
 [Setup]
-AppId={{A1B2C3D4-E5F6-47AB-90CD-1234567890AB}
+AppId={{97806af7-6482-4256-903e-ac9443f4841e}}
 AppName=Castelldans
 AppVerName=Castelldans (Actualización 1.1)
 AppVersion=1.1
