@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:html' as html;
 
 class UpdatePaymentsModal extends StatefulWidget {
   final DocumentReference usuarioRef;
@@ -199,39 +198,27 @@ class _UpdatePaymentsModalState extends State<UpdatePaymentsModal> {
                                   }
 
                                   // Armar correo personalizado
-                                  final asunto = Uri.encodeComponent(
-                                    'Boleta de pago - $mes $anio',
-                                  );
-                                  final cuerpo = Uri.encodeComponent('''
-Estimado/a $nombres,
-
-Se confirma la recepción del pago correspondiente al mes de $mes del año $anio.
-
-Detalles del pago:
-- Nombre completo: $nombres $apellidos
-- Número de documento: $numeroDocumento
-- Litera asignada: $litera
-- Zona: $zona
-- Fecha de ingreso: ${fechaIngreso != null ? '${fechaIngreso.day}/${fechaIngreso.month}/${fechaIngreso.year}' : 'No registrada'}
-- Fecha de salida: ${fechaSalida != null ? '${fechaSalida.day}/${fechaSalida.month}/${fechaSalida.year}' : 'No registrada'}
-- Mes cancelado: $mes $anio
-
-Gracias por cumplir con su obligación de pago.
-
-Atentamente,
-Administración de Residencia de British
-''');
-
-                                  final uri = Uri.parse(
-                                    'mailto:$correo?subject=$asunto&body=$cuerpo',
-                                  );
-
                                   try {
+                                    final uri = Uri(
+                                      scheme: 'mailto',
+                                      path: correo,
+                                      query: Uri.encodeQueryComponent(
+                                        'subject=Boleta de pago - $mes $anio&body=Estimado/a $nombres,\n\n'
+                                        'Se confirma la recepción del pago correspondiente al mes de $mes del año $anio.\n\n'
+                                        'Detalles del pago:\n'
+                                        '- Nombre completo: $nombres $apellidos\n'
+                                        '- Número de documento: $numeroDocumento\n'
+                                        '- Litera asignada: $litera\n'
+                                        '- Mes cancelado: $mes $anio\n\n'
+                                        'Gracias por cumplir con su obligación de pago.\n\n'
+                                        'Atentamente,\nAdministración de Residencia de British',
+                                      ),
+                                    );
+
                                     if (await canLaunchUrl(uri)) {
-                                      // En web usamos html.window.open para abrir en nueva pestaña
-                                      html.window.open(
-                                        uri.toString(),
-                                        '_blank',
+                                      await launchUrl(
+                                        uri,
+                                        mode: LaunchMode.externalApplication,
                                       );
                                       ScaffoldMessenger.of(
                                         context,
@@ -250,20 +237,20 @@ Administración de Residencia de British
                                       ).showSnackBar(
                                         const SnackBar(
                                           content: Text(
-                                            'No se pudo abrir el cliente de correo',
+                                            'No se pudo abrir el cliente de correo.',
                                           ),
-                                          backgroundColor: Colors.red,
+                                          backgroundColor: Colors.orange,
                                         ),
                                       );
                                     }
                                   } catch (e) {
                                     debugPrint(
-                                      'Error al intentar abrir mailto: $e',
+                                      'Error al intentar enviar correo: $e',
                                     );
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'No se pudo abrir el correo: $e',
+                                          'Error al intentar enviar el correo: $e',
                                         ),
                                         backgroundColor: Colors.red,
                                       ),

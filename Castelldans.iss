@@ -13,7 +13,7 @@ WizardStyle=modern
 UninstallDisplayIcon={app}\Castelldans.exe
 
 [Tasks]
-Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:"; Flags: checked
+Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:";
 
 [Files]
 ; Archivos de la aplicación (se actualizan si existen)
