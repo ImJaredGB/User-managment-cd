@@ -46,9 +46,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
       final data = snapshot.docs.map((doc) {
         final info = doc.data();
         return {
-          'id': doc.id, // incluir el id del documento
+          'id': doc.id,
           'nombre': info['nombres'] ?? '',
           'apellido': info['apellidos'] ?? '',
+          'numeroDocumento': info['numeroDocumento'] ?? '',
           'fechaIngreso': (info['fechaIngreso'] as Timestamp?)?.toDate(),
           'fechaSalida': (info['fechaSalida'] as Timestamp?)?.toDate(),
         };
@@ -255,8 +256,16 @@ class _PaymentsPageState extends State<PaymentsPage> {
                                           final nombreCompleto =
                                               '${usuario['nombre']} ${usuario['apellido']}'
                                                   .toLowerCase();
+                                          final documento =
+                                              usuario['numeroDocumento']
+                                                  ?.toString()
+                                                  .toLowerCase() ??
+                                              '';
                                           return filtroBusqueda.isEmpty ||
                                               nombreCompleto.contains(
+                                                filtroBusqueda,
+                                              ) ||
+                                              documento.contains(
                                                 filtroBusqueda,
                                               );
                                         })

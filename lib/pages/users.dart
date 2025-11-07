@@ -159,7 +159,7 @@ class _UsersPageState extends State<UsersPage> {
 
                   final screenWidth = MediaQuery.of(context).size.width;
 
-                  if (screenWidth < 1100) {
+                  if (screenWidth < 1150) {
                     return const Center(
                       child: Text(
                         'Agranda un poco la pantalla para mostrar la información',
@@ -212,9 +212,15 @@ class _UsersPageState extends State<UsersPage> {
                                 ),
                               ),
                               DataCell(
-                                Text(
-                                  usuario["numeroDocumento"]?.toString() ?? '-',
-                                ),
+                                Text(() {
+                                  final docNum =
+                                      usuario["numeroDocumento"]?.toString() ??
+                                      '-';
+                                  if (docNum.length > 10) {
+                                    return '${docNum.substring(0, 9)}...';
+                                  }
+                                  return docNum;
+                                }()),
                               ),
                               DataCell(
                                 Text(

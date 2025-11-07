@@ -112,34 +112,34 @@ class _RoomsPageState extends State<RoomsPage> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.cloud_upload),
-                        label: const Text('Cargar datos'),
-                        onPressed: () async {
-                          await updateHabitacionesStatusInFirestore();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Datos cargados y literas actualizadas en Firestore',
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(
-                            255,
-                            161,
-                            28,
-                            37,
-                          ),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
+                      // ElevatedButton.icon(
+                      //   icon: const Icon(Icons.cloud_upload),
+                      //   label: const Text('Cargar datos'),
+                      //   onPressed: () async {
+                      //     await updateHabitacionesStatusInFirestore();
+                      //     ScaffoldMessenger.of(context).showSnackBar(
+                      //       const SnackBar(
+                      //         content: Text(
+                      //           'Datos cargados y literas actualizadas en Firestore',
+                      //         ),
+                      //       ),
+                      //     );
+                      //   },
+                      //   style: ElevatedButton.styleFrom(
+                      //     backgroundColor: const Color.fromARGB(
+                      //       255,
+                      //       161,
+                      //       28,
+                      //       37,
+                      //     ),
+                      //     foregroundColor: Colors.white,
+                      //     shape: RoundedRectangleBorder(
+                      //       borderRadius: BorderRadius.circular(10),
+                      //       side: BorderSide.none,
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(width: 8),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.bed_outlined),
                         label: const Text('Liberar literas'),
