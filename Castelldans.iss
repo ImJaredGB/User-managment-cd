@@ -1,11 +1,11 @@
 [Setup]
 AppId={{97806af7-6482-4256-903e-ac9443f4841e}}
 AppName=Castelldans
-AppVerName=Castelldans (Actualización 1.1)
-AppVersion=1.1
+AppVerName=Castelldans (Actualización 1.2)
+AppVersion=1.2
 DefaultDirName={pf}\Castelldans
 DefaultGroupName=Castelldans
-OutputBaseFilename=CastelldansUpdate
+OutputBaseFilename=CastelldansUpdateV2
 Compression=lzma
 SolidCompression=yes
 SetupIconFile=windows\runner\resources\Castelldans.ico
@@ -14,42 +14,55 @@ UninstallDisplayIcon={app}\Castelldans.exe
 PrivilegesRequired=admin
 
 [Tasks]
-Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:";
+Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:"
 
 [Files]
-; Archivos de la aplicación (se actualizan si existen)
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
-
-; Instalador de Visual C++ Redistributable
 Source: "installer\VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Run]
-; Instalar dependencias de Microsoft (modo silencioso)
 Filename: "{tmp}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Instalando dependencias de Microsoft..."; Flags: waituntilterminated
-
-; Ejecutar la app al finalizar (opcional)
 Filename: "{app}\Castelldans.exe"; Description: "{cm:LaunchProgram,Castelldans}"; Flags: nowait postinstall skipifsilent
 
 [Icons]
-; Acceso directo en el menú Inicio
 Name: "{group}\Castelldans"; Filename: "{app}\Castelldans.exe"
-
-; Acceso directo en el escritorio
 Name: "{commondesktop}\Castelldans"; Filename: "{app}\Castelldans.exe"; Tasks: desktopicon
 
 [Code]
 function CheckOldInstallation(): Boolean;
 var
-  InstallPath: String;
+  UninstallString: String;
+  Response: Integer;
+  ExecResult: Integer; // <- Nueva variable para capturar el resultado del Exec
 begin
   Result := True;
-  InstallPath := ExpandConstant('{pf}\Castelldans');
 
-  if DirExists(InstallPath) and FileExists(InstallPath + '\Castelldans.exe') then begin
-    if not RegKeyExists(HKEY_LOCAL_MACHINE, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{97806af7-6482-4256-903e-ac9443f4841e}_is1') then begin
-      MsgBox('Se ha detectado una versión anterior de Castelldans instalada sin AppId. ' +
-             'Por favor, desinstala la versión anterior manualmente antes de continuar con la instalación de la versión 1.1.',
-             mbInformation, MB_OK);
+  // Busca el desinstalador anterior en el registro
+  if RegQueryStringValue(HKEY_LOCAL_MACHINE, 
+    'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{97806af7-6482-4256-903e-ac9443f4841e}_is1', 
+    'UninstallString', UninstallString) then
+  begin
+    // Pregunta al usuario si quiere desinstalar la versión anterior
+    Response := MsgBox('Se ha detectado una versión anterior de Castelldans.'#13#13 +
+      '¿Deseas desinstalarla antes de continuar?', mbConfirmation, MB_YESNO);
+
+    if Response = IDYES then
+    begin
+      // Ejecuta el desinstalador en modo silencioso
+      if Exec(RemoveQuotes(UninstallString), '/SILENT', '', SW_SHOW, ewWaitUntilTerminated, ExecResult) then
+      begin
+        MsgBox('La versión anterior se ha desinstalado correctamente.', mbInformation, MB_OK);
+      end
+      else
+      begin
+        MsgBox('Ocurrió un error al intentar desinstalar la versión anterior.', mbError, MB_OK);
+        Result := False;
+      end;
+    end
+    else
+    begin
+      // Si el usuario no quiere desinstalar, cancela la instalación
+      MsgBox('Debes desinstalar la versión anterior antes de continuar.', mbInformation, MB_OK);
       Result := False;
     end;
   end;
