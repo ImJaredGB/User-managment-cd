@@ -11,6 +11,7 @@ SolidCompression=yes
 SetupIconFile=windows\runner\resources\Castelldans.ico
 WizardStyle=modern
 UninstallDisplayIcon={app}\Castelldans.exe
+PrivilegesRequired=admin
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:";
@@ -44,8 +45,8 @@ begin
   Result := True;
   InstallPath := ExpandConstant('{pf}\Castelldans');
 
-  if DirExists(InstallPath) then begin
-    if not RegKeyExists(HKEY_LOCAL_MACHINE, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{A1B2C3D4-E5F6-47AB-90CD-1234567890AB}_is1') then begin
+  if DirExists(InstallPath) and FileExists(InstallPath + '\Castelldans.exe') then begin
+    if not RegKeyExists(HKEY_LOCAL_MACHINE, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{97806af7-6482-4256-903e-ac9443f4841e}_is1') then begin
       MsgBox('Se ha detectado una versión anterior de Castelldans instalada sin AppId. ' +
              'Por favor, desinstala la versión anterior manualmente antes de continuar con la instalación de la versión 1.1.',
              mbInformation, MB_OK);
